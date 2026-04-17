@@ -11,9 +11,15 @@ public static class PersistenceServices
 {
     public static void AddPersistenceServices(this IServiceCollection services, IConfiguration configuration)
     {
+        var provider = configuration["DatabaseProvider"] ?? "SqlServer";
+        var connStr = configuration.GetConnectionString("DefaultConnection")!;
+
         services.AddDbContext<PineSmsDbContext>(options =>
         {
-            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"));
+            if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+                options.UseSqlite(connStr);
+            else
+                options.UseSqlServer(connStr);
         });
 
         services.AddScoped<ICustomerService, CustomerRepository>();

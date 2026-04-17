@@ -7,7 +7,10 @@ public class PineSmsDbContext : DbContext
 {
     public PineSmsDbContext(DbContextOptions<PineSmsDbContext> options) : base(options)
     {
-        Database.Migrate();
+        if (Database.IsSqlite())
+            Database.EnsureCreated();
+        else
+            Database.Migrate();
     }
 
     public DbSet<Customer> Customer { get; set; }
