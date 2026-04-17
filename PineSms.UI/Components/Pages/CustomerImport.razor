@@ -1,0 +1,138 @@
+@page "/customer/import"
+@rendermode InteractiveServer
+@using PineSms.UI.Services
+@using PineSms.Core.Features.Customer
+@using OfficeOpenXml
+@inject ApiClientService ApiClient
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>وارد کردن مشتریان</PageTitle>
+
+@if (!AuthState.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+    return;
+}
+
+<div class="container mt-4" style="direction:rtl;">
+    <h4 class="mb-4">📥 وارد کردن مشتریان از اکسل</h4>
+
+    @if (!string.IsNullOrEmpty(alertMessage))
+    {
+        <div class="alert @alertClass alert-dismissible">
+            <div>@alertMessage</div>
+            @if (invalidNumbers.Count > 0)
+            {
+                <div class="mt-2"><strong>شماره‌های نامعتبر:</strong> @string.Join("، ", invalidNumbers)</div>
+            }
+            @if (duplicateNumbers.Count > 0)
+            {
+                <div class="mt-2"><strong>شماره‌های تکراری:</strong> @string.Join("، ", duplicateNumbers)</div>
+            }
+            @if (showIgnoreButton)
+            {
+                <button class="btn btn-warning btn-sm mt-2" @onclick="HandleIgnoreAndImport">
+                    نادیده گرفتن و ادامه
+                </button>
+            }
+            <button type="button" class="btn-close" @onclick="() => alertMessage = string.Empty"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm p-4">
+        <div class="mb-3">
+            <label class="form-label">انتخاب فایل اکسل (.xlsx)</label>
+            <InputFile class="form-control" OnChange="HandleFileSelected" accept=".xlsx,.xls" />
+            <small class="text-muted">ستون اول باید شماره موبایل (۱۰ رقم بدون صفر) باشد</small>
+        </div>
+        @if (phoneNumbers.Count > 0)
+        {
+            <div class="mb-3">
+                <span class="badge bg-info">@phoneNumbers.Count شماره بارگذاری شد</span>
+            </div>
+            <button class="btn btn-success" @onclick="HandleImport" disabled="@isLoading">
+                @if (isLoading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                ثبت در سیستم
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private List<string> phoneNumbers = new();
+    private List<string> invalidNumbers = new();
+    private List<string> duplicateNumbers = new();
+    private string alertMessage = string.Empty;
+    private string alertClass = "alert-info";
+    private bool isLoading = false;
+    private bool showIgnoreButton = false;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        phoneNumbers.Clear();
+        try
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 10_000_000);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            ms.Position = 0;
+            using var package = new ExcelPackage(ms);
+            var sheet = package.Workbook.Worksheets[0];
+            for (int row = 2; row <= sheet.Dimension.End.Row; row++)
+            {
+                var val = sheet.Cells[row, 1].Text?.Trim();
+                if (!string.IsNullOrEmpty(val))
+                    phoneNumbers.Add(val);
+            }
+            alertMessage = $"{phoneNumbers.Count} شماره از فایل خوانده شد.";
+            alertClass = "alert-info";
+            showIgnoreButton = false;
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"خطا در خواندن فایل: {ex.Message}";
+            alertClass = "alert-danger";
+        }
+    }
+
+    private async Task HandleImport()
+    {
+        await ImportAsync(false);
+    }
+
+    private async Task HandleIgnoreAndImport()
+    {
+        await ImportAsync(true);
+    }
+
+    private async Task ImportAsync(bool ignoreInvalid)
+    {
+        isLoading = true;
+        showIgnoreButton = false;
+        try
+        {
+            var command = new ImportCustomersCommand { PhoneNumbers = phoneNumbers, IgnoreInvalid = ignoreInvalid };
+            var result = await ApiClient.ImportCustomersAsync(command);
+            if (result != null)
+            {
+                alertClass = result.Success ? "alert-success" : "alert-warning";
+                alertMessage = result.Message;
+                invalidNumbers = result.InvalidNumbers;
+                duplicateNumbers = result.DuplicateNumbers;
+                showIgnoreButton = !result.Success && (result.InvalidNumbers.Count > 0 || result.DuplicateNumbers.Count > 0);
+                if (result.Success) phoneNumbers.Clear();
+            }
+        }
+        catch
+        {
+            alertClass = "alert-danger";
+            alertMessage = "خطا در اتصال به سرور";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

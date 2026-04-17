@@ -1,0 +1,76 @@
+@page "/login"
+@rendermode InteractiveServer
+@using PineSms.UI.Services
+@using PineSms.Core.Features.Account
+@inject ApiClientService ApiClient
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height:100vh; direction:rtl;">
+    <div class="card shadow p-4" style="min-width:360px;">
+        <div class="text-center mb-4">
+            <h3 class="text-primary">🌲 PineSms</h3>
+            <p class="text-muted">ورود به سیستم</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">نام کاربری</label>
+                <InputText class="form-control" @bind-Value="loginModel.Username" placeholder="admin" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">رمز عبور</label>
+                <InputText type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="••••••••" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100" disabled="@isLoading">
+                @if (isLoading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                ورود
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private GetUserLoginQuery loginModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    protected override void OnInitialized()
+    {
+        if (AuthState.IsAuthenticated)
+            Navigation.NavigateTo("/");
+    }
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        try
+        {
+            var result = await ApiClient.LoginAsync(loginModel);
+            if (result?.Success == true)
+            {
+                AuthState.SetToken(result.Token);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = result?.Message ?? "خطا در ورود";
+            }
+        }
+        catch
+        {
+            errorMessage = "خطا در اتصال به سرور";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

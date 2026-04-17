@@ -1,0 +1,51 @@
+@page "/"
+@rendermode InteractiveServer
+@using PineSms.UI.Services
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+
+@if (!AuthState.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+    return;
+}
+
+<div class="container mt-4" style="direction:rtl;">
+    <div class="jumbotron">
+        <h2 class="text-primary">خوش آمدید، @AuthState.PersianName 👋</h2>
+        <p class="lead text-muted">سیستم مدیریت پیامک PineSms</p>
+        <hr />
+        <div class="row row-cols-1 row-cols-md-3 g-4 mt-2">
+            <div class="col">
+                <div class="card h-100 text-center border-success">
+                    <div class="card-body">
+                        <h1>➕</h1>
+                        <h5 class="card-title">افزودن مشتری</h5>
+                        <p class="card-text text-muted">ثبت مشتری جدید از طریق فرم</p>
+                        <a href="/customer/add" class="btn btn-success">شروع</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 text-center border-info">
+                    <div class="card-body">
+                        <h1>📥</h1>
+                        <h5 class="card-title">ورود از اکسل</h5>
+                        <p class="card-text text-muted">وارد کردن مشتریان از فایل اکسل</p>
+                        <a href="/customer/import" class="btn btn-info">شروع</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 text-center border-primary">
+                    <div class="card-body">
+                        <h1>📨</h1>
+                        <h5 class="card-title">ارسال پیامک</h5>
+                        <p class="card-text text-muted">ارسال پیامک انبوه به مشتریان</p>
+                        <a href="/sms/send" class="btn btn-primary">شروع</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
