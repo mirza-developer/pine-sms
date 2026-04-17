@@ -3,9 +3,12 @@
 @using PineSms.UI.Services
 @using PineSms.Core.Features.Sms
 @using PineSms.Core.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject ApiClientService ApiClient
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
+@inject NotificationService NotificationService
 
 <PageTitle>ارسال پیامک</PageTitle>
 
@@ -77,43 +80,48 @@
         <div class="col-md-8">
             <div class="card shadow-sm p-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">لیست مشتریان (@customers.Count نفر)</h6>
-                    <div>
-                        <button class="btn btn-outline-secondary btn-sm me-2" @onclick="SelectAll">انتخاب همه</button>
-                        <button class="btn btn-outline-secondary btn-sm" @onclick="DeselectAll">حذف انتخاب</button>
-                    </div>
+                    <h6 class="mb-0">لیست مشتریان (@customers.Count نفر) | انتخاب شده: @selectedIds.Count</h6>
                 </div>
                 <div style="max-height:500px; overflow-y:auto;">
-                    <table class="table table-sm table-hover">
-                        <thead>
+                    <table class="table table-sm table-hover table-bordered">
+                        <thead class="table-dark">
                             <tr>
-                                <th style="width:40px;"></th>
+                                <th style="width:40px; text-align:center;">
+                                    <input type="checkbox"
+                                           checked="@allSelected"
+                                           @onchange="ToggleAll"
+                                           title="انتخاب/حذف همه" />
+                                </th>
                                 <th>شماره موبایل</th>
                                 <th>نام</th>
                                 <th>جنسیت</th>
                                 <th>تاریخ ثبت</th>
+                                <th>آخرین استفاده</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var c in customers)
                             {
-                                <tr class="@(selectedIds.Contains(c.Id) ? "table-primary" : "")">
-                                    <td>
+                                <tr class="@(selectedIds.Contains(c.Id) ? "table-primary" : "")"
+                                    style="cursor:pointer;" @onclick="() => ToggleRow(c.Id)">
+                                    <td style="text-align:center;">
                                         <input type="checkbox"
                                                checked="@selectedIds.Contains(c.Id)"
-                                               @onchange="e => ToggleSelection(c.Id, (bool)(e.Value ?? false))" />
+                                               @onchange="e => ToggleSelection(c.Id, (bool)(e.Value ?? false))"
+                                               @onclick:stopPropagation="true" />
                                     </td>
                                     <td>@c.PhoneNumber</td>
                                     <td>@(c.Name ?? "-")</td>
                                     <td>@(c.Gender == 1 ? "مرد" : c.Gender == 2 ? "زن" : "-")</td>
                                     <td>@PersianDateHelper.ToPersianDate(c.SaveDate)</td>
+                                    <td>@(c.LastUsageDate.HasValue ? PersianDateHelper.ToPersianDate(c.LastUsageDate.Value) : "-")</td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                     @if (customers.Count == 0 && !isLoadingCustomers)
                     {
-                        <div class="text-center text-muted py-4">ابتدا جستجو کنید</div>
+                        <div class="text-center text-muted py-4">ابتدا بازه زمانی را انتخاب کرده و جستجو کنید</div>
                     }
                 </div>
             </div>
@@ -134,6 +142,8 @@
     private bool isLoadingCustomers = false;
     private bool isSending = false;
 
+    private bool allSelected => customers.Count > 0 && selectedIds.Count == customers.Count;
+
     private void OnRangeChanged()
     {
         if (selectedRange != "Custom")
@@ -153,9 +163,16 @@
             var to = selectedRange == "Custom" ? customTo : DateTime.UtcNow;
             var result = await ApiClient.GetCustomersByRangeAsync(from, to);
             customers = result ?? new List<Customer>();
+            // Initially select all
+            selectedIds = customers.Select(c => c.Id).ToHashSet();
+            if (customers.Count == 0)
+                NotificationService.ShowInformation("هیچ مشتری در این بازه زمانی یافت نشد");
+            else
+                NotificationService.ShowSuccess($"{customers.Count} مشتری یافت شد");
         }
         catch
         {
+            NotificationService.ShowError("خطا در بارگذاری مشتریان");
             alertClass = "alert-danger";
             alertMessage = "خطا در بارگذاری مشتریان";
         }
@@ -171,6 +188,19 @@
         else selectedIds.Remove(id);
     }
 
+    private void ToggleRow(int id)
+    {
+        if (selectedIds.Contains(id)) selectedIds.Remove(id);
+        else selectedIds.Add(id);
+    }
+
+    private void ToggleAll(ChangeEventArgs e)
+    {
+        bool check = (bool)(e.Value ?? false);
+        if (check) selectedIds = customers.Select(c => c.Id).ToHashSet();
+        else selectedIds.Clear();
+    }
+
     private void SelectAll() => selectedIds = customers.Select(c => c.Id).ToHashSet();
     private void DeselectAll() => selectedIds.Clear();
 
@@ -180,6 +210,12 @@
         {
             alertClass = "alert-warning";
             alertMessage = "لطفاً متن پیامک را وارد کنید";
+            return;
+        }
+        if (string.IsNullOrEmpty(fromNumber))
+        {
+            alertClass = "alert-warning";
+            alertMessage = "لطفاً شماره فرستنده را وارد کنید";
             return;
         }
         isSending = true;
@@ -195,11 +231,16 @@
                 CustomTo = selectedRange == "Custom" ? customTo : null
             };
             var result = await ApiClient.SendSmsAsync(command);
+            if (result?.Success == true)
+                NotificationService.ShowSuccess(result.Message);
+            else
+                NotificationService.ShowError(result?.Message ?? "خطا در ارسال");
             alertClass = result?.Success == true ? "alert-success" : "alert-danger";
             alertMessage = result?.Message ?? "خطا در ارسال";
         }
         catch
         {
+            NotificationService.ShowError("خطا در اتصال به سرور");
             alertClass = "alert-danger";
             alertMessage = "خطا در اتصال به سرور";
         }

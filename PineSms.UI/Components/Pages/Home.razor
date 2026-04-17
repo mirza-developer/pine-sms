@@ -1,6 +1,8 @@
 @page "/"
 @rendermode InteractiveServer
 @using PineSms.UI.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
 
@@ -10,7 +12,7 @@
     return;
 }
 
-<div class="container mt-4" style="direction:rtl;">
+<div class="container mt-4">
     <div class="jumbotron">
         <h2 class="text-primary">خوش آمدید، @AuthState.PersianName 👋</h2>
         <p class="lead text-muted">سیستم مدیریت پیامک PineSms</p>

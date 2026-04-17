@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using OfficeOpenXml;
 using PineSms.UI.Components;
 using PineSms.UI.Services;
@@ -17,6 +18,7 @@ builder.Services.AddHttpClient<ApiClientService>(client =>
 
 builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateService>());
+builder.Services.AddScoped<NotificationService>();
 
 var app = builder.Build();
 

@@ -2,9 +2,12 @@
 @rendermode InteractiveServer
 @using PineSms.UI.Services
 @using PineSms.Core.Features.Customer
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject ApiClientService ApiClient
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
+@inject NotificationService NotificationService
 
 <PageTitle>افزودن مشتری</PageTitle>
 
@@ -14,61 +17,66 @@
     return;
 }
 
-<div class="container mt-4" style="direction:rtl;">
-    <h4 class="mb-4">➕ افزودن مشتری جدید</h4>
+<div class="container mt-4">
+    <div class="d-flex align-items-center mb-4">
+        <h4 class="mb-0 me-2">افزودن مشتری جدید</h4>
+        <span class="badge bg-success">فرم ورود دستی</span>
+    </div>
 
-    @if (!string.IsNullOrEmpty(alertMessage))
-    {
-        <div class="alert @alertClass alert-dismissible">
-            @alertMessage
-            <button type="button" class="btn-close" @onclick="() => alertMessage = string.Empty"></button>
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <EditForm Model="command" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">شماره موبایل <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">0</span>
+                            <InputText class="form-control" @bind-Value="command.PhoneNumber" placeholder="9903063085" />
+                        </div>
+                        <div class="form-text text-muted">۱۰ رقم، شروع با ۹ (بدون صفر ابتدایی)</div>
+                        <ValidationMessage For="@(() => command.PhoneNumber)" class="text-danger small" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">نام و نام‌خانوادگی</label>
+                        <InputText class="form-control" @bind-Value="command.Name" placeholder="نام کامل (اختیاری)" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">جنسیت</label>
+                        <InputSelect class="form-select" @bind-Value="command.Gender">
+                            <option value="">-- انتخاب --</option>
+                            <option value="1">مرد</option>
+                            <option value="2">زن</option>
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">سال تولد</label>
+                        <InputNumber class="form-control" @bind-Value="command.BirthYear" placeholder="مثال: ۱۳۷۰" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">تاریخ تولد (شمسی)</label>
+                        <PersianDatePicker @bind-Value="command.BirthDate" />
+                    </div>
+                    <div class="col-12 mt-3">
+                        <button type="submit" class="btn btn-success px-4" disabled="@isLoading">
+                            @if (isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            ثبت مشتری
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary me-2" @onclick="Reset">
+                            پاک کردن
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
         </div>
-    }
-
-    <div class="card shadow-sm p-4">
-        <EditForm Model="command" OnValidSubmit="HandleSubmit">
-            <DataAnnotationsValidator />
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">شماره موبایل <span class="text-danger">*</span></label>
-                    <InputText class="form-control" @bind-Value="command.PhoneNumber" placeholder="مثال: 9903063085" />
-                    <small class="text-muted">۱۰ رقم بدون صفر ابتدایی</small>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">نام</label>
-                    <InputText class="form-control" @bind-Value="command.Name" placeholder="نام کامل" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">جنسیت</label>
-                    <InputSelect class="form-select" @bind-Value="command.Gender">
-                        <option value="">انتخاب کنید</option>
-                        <option value="1">مرد</option>
-                        <option value="2">زن</option>
-                    </InputSelect>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">سال تولد</label>
-                    <InputNumber class="form-control" @bind-Value="command.BirthYear" placeholder="مثال: 1370" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">تاریخ تولد (شمسی)</label>
-                    <InputText class="form-control" @bind-Value="command.BirthDate" placeholder="مثال: 1370/01/01" />
-                </div>
-                <div class="col-12">
-                    <button type="submit" class="btn btn-success" disabled="@isLoading">
-                        @if (isLoading) { <span class="spinner-border spinner-border-sm me-1"></span> }
-                        ثبت مشتری
-                    </button>
-                </div>
-            </div>
-        </EditForm>
     </div>
 </div>
 
 @code {
     private InsertCustomerCommand command = new();
-    private string alertMessage = string.Empty;
-    private string alertClass = "alert-success";
     private bool isLoading = false;
 
     private async Task HandleSubmit()
@@ -77,18 +85,26 @@
         try
         {
             var (success, message) = await ApiClient.InsertCustomerAsync(command);
-            alertClass = success ? "alert-success" : "alert-danger";
-            alertMessage = message;
-            if (success) command = new InsertCustomerCommand();
+            if (success)
+            {
+                NotificationService.ShowSuccess(message);
+                command = new InsertCustomerCommand();
+            }
+            else
+            {
+                NotificationService.ShowError(message);
+            }
         }
         catch
         {
-            alertClass = "alert-danger";
-            alertMessage = "خطا در اتصال به سرور";
+            NotificationService.ShowError("خطا در اتصال به سرور");
         }
         finally
         {
             isLoading = false;
         }
     }
+
+    private void Reset() => command = new InsertCustomerCommand();
 }
+

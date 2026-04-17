@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @using PineSms.UI.Services
 @using PineSms.Core.Features.Account
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
 @inject ApiClientService ApiClient
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
