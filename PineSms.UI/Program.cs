@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using OfficeOpenXml;
 using PineSms.UI.Components;
 using PineSms.UI.Services;
@@ -30,6 +29,11 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
+app.Run();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

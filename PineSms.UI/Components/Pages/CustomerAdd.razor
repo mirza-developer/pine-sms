@@ -1,9 +1,7 @@
 @page "/customer/add"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using PineSms.UI.Services
 @using PineSms.Core.Features.Customer
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
 @inject ApiClientService ApiClient
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation

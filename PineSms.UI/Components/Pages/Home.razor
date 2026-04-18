@@ -1,8 +1,6 @@
 @page "/"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using PineSms.UI.Services
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation
 

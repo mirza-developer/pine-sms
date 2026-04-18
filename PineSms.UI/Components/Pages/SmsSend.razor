@@ -1,10 +1,8 @@
 @page "/sms/send"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using PineSms.UI.Services
 @using PineSms.Core.Features.Sms
 @using PineSms.Core.Entities
-@using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
 @inject ApiClientService ApiClient
 @inject AuthStateService AuthState
 @inject NavigationManager Navigation

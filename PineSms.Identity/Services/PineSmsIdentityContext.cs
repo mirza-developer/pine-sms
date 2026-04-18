@@ -10,9 +10,15 @@ public class PineSmsIdentityContext : IdentityDbContext<ApplicationUser>
     public PineSmsIdentityContext(DbContextOptions<PineSmsIdentityContext> options) : base(options)
     {
         if (Database.IsSqlite())
+        {
+            // EnsureCreated creates the schema from the model (incl. seeded data); safe to call multiple times
             Database.EnsureCreated();
+        }
         else
+        {
+            // SQL Server: apply pending migrations (creates DB if not exists)
             Database.Migrate();
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder builder)

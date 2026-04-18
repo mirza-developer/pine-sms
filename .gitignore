@@ -6,3 +6,7 @@ obj/
 *.suo
 *.swp
 appsettings.Development.json
+# SQLite database files (auto-created at runtime)
+*.db
+*.db-shm
+*.db-wal
