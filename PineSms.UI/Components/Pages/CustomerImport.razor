@@ -94,6 +94,10 @@
     private bool isLoading = false;
     private bool showIgnoreButton = false;
 
+    // Matches a 10-digit Iranian mobile number starting with 9 (no country code, no leading 0)
+    private static readonly System.Text.RegularExpressions.Regex PhonePattern =
+        new(@"^9\d{9}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         phoneNumbers.Clear();
@@ -105,21 +109,31 @@
             await stream.CopyToAsync(ms);
             ms.Position = 0;
 
-            try
+            // Peek at the first bytes to decide the format before trying ExcelDataReader
+            bool isHtml = StartsWithHtml(ms);
+            ms.Position = 0;
+
+            if (isHtml)
             {
-                ReadFromExcel(ms);
+                ReadFromHtml(ms);
             }
-            catch (ExcelDataReader.Exceptions.HeaderException)
+            else
             {
-                // File is not a recognised binary/OOXML Excel format (e.g. CSV or HTML
-                // saved with an .xls extension). Fall back to plain-text reading.
-                ms.Position = 0;
-                ReadFromText(ms);
+                try
+                {
+                    ReadFromExcel(ms);
+                }
+                catch (Exception)
+                {
+                    // Not a recognised binary/OOXML Excel format; try plain-text/CSV
+                    ms.Position = 0;
+                    ReadFromCsv(ms);
+                }
             }
 
             if (phoneNumbers.Count == 0)
             {
-                NotificationService.ShowWarning("فایل خالی است");
+                NotificationService.ShowWarning("فایل خالی است یا شماره‌ای یافت نشد");
                 return;
             }
             NotificationService.ShowInformation($"{phoneNumbers.Count} شماره از فایل خوانده شد");
@@ -130,14 +144,23 @@
         }
     }
 
+    /// <summary>Checks whether the stream content begins with an HTML tag.</summary>
+    private static bool StartsWithHtml(MemoryStream ms)
+    {
+        // Read up to 512 bytes to detect an HTML signature
+        var buf = new byte[Math.Min(512, ms.Length)];
+        int read = ms.Read(buf, 0, buf.Length);
+        var prefix = System.Text.Encoding.UTF8.GetString(buf, 0, read).TrimStart();
+        return prefix.StartsWith("<", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Reads phone numbers from a real .xls or .xlsx binary file.</summary>
     private void ReadFromExcel(MemoryStream ms)
     {
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         using var reader = ExcelReaderFactory.CreateReader(ms);
         // Skip header row
-        if (!reader.Read())
-        {
-            return;
-        }
+        if (!reader.Read()) return;
         while (reader.Read())
         {
             var val = reader.GetValue(0)?.ToString()?.Trim();
@@ -146,7 +169,57 @@
         }
     }
 
-    private void ReadFromText(MemoryStream ms)
+    /// <summary>
+    /// Reads phone numbers from an HTML table (e.g. a web-exported .xls file).
+    /// Scans every &lt;td&gt; cell in every data row and collects values that
+    /// match the Iranian mobile number pattern (10 digits, starts with 9).
+    /// </summary>
+    private void ReadFromHtml(MemoryStream ms)
+    {
+        using var sr = new StreamReader(ms, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+        var html = sr.ReadToEnd();
+
+        // Extract all <tr> blocks (skip the first row which is the header)
+        var rowMatches = System.Text.RegularExpressions.Regex.Matches(
+            html, @"<tr[^>]*>(.*?)</tr>",
+            System.Text.RegularExpressions.RegexOptions.Singleline |
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        bool headerSkipped = false;
+        foreach (System.Text.RegularExpressions.Match row in rowMatches)
+        {
+            // Skip the header row (contains <th> tags)
+            if (!headerSkipped)
+            {
+                if (row.Value.IndexOf("<th", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    headerSkipped = true;
+                    continue;
+                }
+            }
+
+            // Extract every <td> cell value in this row
+            var cellMatches = System.Text.RegularExpressions.Regex.Matches(
+                row.Groups[1].Value, @"<td[^>]*>(.*?)</td>",
+                System.Text.RegularExpressions.RegexOptions.Singleline |
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            foreach (System.Text.RegularExpressions.Match cell in cellMatches)
+            {
+                // Strip any inner HTML tags and decode basic entities
+                var raw = System.Text.RegularExpressions.Regex.Replace(cell.Groups[1].Value, "<[^>]+>", "").Trim();
+                raw = System.Net.WebUtility.HtmlDecode(raw);
+                if (PhonePattern.IsMatch(raw))
+                {
+                    phoneNumbers.Add(raw);
+                    break; // take only the first matching phone per row to avoid duplicates
+                }
+            }
+        }
+    }
+
+    /// <summary>Reads phone numbers from a CSV or tab-separated text file.</summary>
+    private void ReadFromCsv(MemoryStream ms)
     {
         using var sr = new StreamReader(ms, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
         // Skip header row
