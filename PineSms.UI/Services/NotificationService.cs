@@ -47,7 +47,7 @@ public class NotificationService
     public void ShowInformation(string message, NotificationPosition position = NotificationPosition.TopRight)
         => Add(message, NotificationLevel.Information, position);
 
-    private void Add(string message, NotificationLevel level, NotificationPosition position)
+    private async void Add(string message, NotificationLevel level, NotificationPosition position)
     {
         var notification = new NotificationMessage
         {
@@ -58,11 +58,10 @@ public class NotificationService
         messages.Add(notification);
         OnChange?.Invoke();
 
-        _ = Task.Delay(5000).ContinueWith(_ =>
-        {
-            messages.Remove(notification);
-            OnChange?.Invoke();
-        });
+        await Task.Delay(5000);
+
+        messages.Remove(notification);
+        OnChange?.Invoke();
     }
 
     public void Remove(Guid id)
