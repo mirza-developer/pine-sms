@@ -39,9 +39,9 @@ public class AuthService : IAuthService
         {
             Issuer = configSec["Issuer"],
             Audience = configSec["Audience"],
-            IssuedAt = DateTime.UtcNow,
-            NotBefore = DateTime.UtcNow,
-            Expires = DateTime.UtcNow.AddHours(int.Parse(configSec["Expires"] ?? "8")),
+            IssuedAt = DateTime.Now,
+            NotBefore = DateTime.Now,
+            Expires = DateTime.Now.AddHours(int.Parse(configSec["Expires"] ?? "8")),
             SigningCredentials = CryptographyTools.GetJwtCredential(configSec["Signing"] ?? "PineSms_JWT_Secret_Key_32Chars"),
             Subject = claimsIdentity
         };

@@ -21,7 +21,7 @@ public static class PersianDateHelper
         }
     }
 
-    public static DateTime GetStartOfToday() => DateTime.UtcNow.Date;
+    public static DateTime GetStartOfToday() => DateTime.Now.Date;
 
     /// <summary>Converts a Persian date string (yyyy/MM/dd) to UTC DateTime. Returns null if parsing fails.</summary>
     public static DateTime? FromPersianDate(string? persianDate)
@@ -43,12 +43,12 @@ public static class PersianDateHelper
     {
         return rangeType switch
         {
-            "LastWeek" => DateTime.UtcNow.AddDays(-7),
-            "LastTwoWeeks" => DateTime.UtcNow.AddDays(-14),
-            "LastMonth" => DateTime.UtcNow.AddMonths(-1),
-            "LastSeason" => DateTime.UtcNow.AddMonths(-3),
-            "LastYear" => DateTime.UtcNow.AddYears(-1),
-            _ => DateTime.UtcNow.AddDays(-30)
+            "LastWeek" => DateTime.Now.AddDays(-7),
+            "LastTwoWeeks" => DateTime.Now.AddDays(-14),
+            "LastMonth" => DateTime.Now.AddMonths(-1),
+            "LastSeason" => DateTime.Now.AddMonths(-3),
+            "LastYear" => DateTime.Now.AddYears(-1),
+            _ => DateTime.Now.AddDays(-30)
         };
     }
 }

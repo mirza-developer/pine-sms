@@ -48,7 +48,7 @@ public class ScheduledSmsWorker : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<PineSmsDbContext>();
         var smsRepo = scope.ServiceProvider.GetRequiredService<SmsRepository>();
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
 
         // Load pending parts that are due, together with the parent job
         var dueParts = await db.SmsSendJobPart
@@ -81,7 +81,7 @@ public class ScheduledSmsWorker : BackgroundService
                 var results = await smsRepo.SendToMelipayamak(
                     part.Job.FromNumber, phoneNumbers, part.Job.MessageText);
 
-                var executedAt = DateTime.UtcNow;
+                var executedAt = DateTime.Now;
                 foreach (var customer in customers)
                     customer.LastUsageDate = executedAt;
 
@@ -107,7 +107,7 @@ public class ScheduledSmsWorker : BackgroundService
             catch (Exception ex)
             {
                 part.Status = SmsJobPartStatus.Failed;
-                part.ExecutedAt = DateTime.UtcNow;
+                part.ExecutedAt = DateTime.Now;
                 part.ResultJson = JsonSerializer.Serialize(new { error = ex.Message });
                 logger.LogError(ex, "Failed to send job {JobId} part {PartNumber}.", part.JobId, part.PartNumber);
             }

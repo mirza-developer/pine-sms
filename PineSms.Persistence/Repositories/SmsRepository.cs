@@ -32,7 +32,7 @@ public class SmsRepository : ISmsService
 
         var recipientResults = await SendToMelipayamak(command.FromNumber, phoneNumbers, command.MessageText);
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         foreach (var customer in customers)
             customer.LastUsageDate = now;
 
@@ -70,12 +70,12 @@ public class SmsRepository : ISmsService
             UserId = userId,
             FromNumber = command.FromNumber,
             MessageText = command.MessageText,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.Now
         };
         dbContext.SmsSendJob.Add(job);
         await dbContext.SaveChangesAsync();
 
-        var firstSendAt = command.FirstSendAt ?? DateTime.UtcNow;
+        var firstSendAt = command.FirstSendAt ?? DateTime.Now;
 
         for (int i = 0; i < parts; i++)
         {

@@ -277,7 +277,7 @@
         if (selectedRange != "Custom")
         {
             customFrom = PersianDateHelper.GetDateRangeFrom(selectedRange);
-            customTo = DateTime.UtcNow;
+            customTo = DateTime.Now;
         }
     }
 
@@ -290,7 +290,7 @@
         try
         {
             var from = selectedRange == "Custom" ? customFrom : PersianDateHelper.GetDateRangeFrom(selectedRange);
-            var to = selectedRange == "Custom" ? customTo : DateTime.UtcNow;
+            var to = selectedRange == "Custom" ? customTo : DateTime.Now;
             var result = await ApiClient.GetCustomersByRangeAsync(from, to);
             customers = result ?? new List<Customer>();
             selectedIds = customers.Select(c => c.Id).ToHashSet();

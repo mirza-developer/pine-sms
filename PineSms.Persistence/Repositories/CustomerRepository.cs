@@ -40,7 +40,7 @@ public class CustomerRepository : ICustomerService
             Gender = command.Gender,
             BirthYear = command.BirthYear,
             BirthDate = birthDate,
-            SaveDate = DateTime.UtcNow,
+            SaveDate = DateTime.Now,
             SaveUserId = userId,
             SaveType = 1
         };
@@ -94,7 +94,7 @@ public class CustomerRepository : ICustomerService
 
         var toInsert = distinctValid.Except(existingNumbers).ToList();
         
-        DateTime saveDate = FromPersianDate(command.SaveDate) ?? DateTime.UtcNow;
+        DateTime saveDate = FromPersianDate(command.SaveDate) ?? DateTime.Now;
         
         foreach (var phone in toInsert)
         {
@@ -112,7 +112,7 @@ public class CustomerRepository : ICustomerService
             .ToListAsync();
         
         foreach (var entity in duplicateEntities)
-            entity.LastUsageDate = DateTime.UtcNow;
+            entity.LastUsageDate = DateTime.Now;
 
         await dbContext.SaveChangesAsync();
         
