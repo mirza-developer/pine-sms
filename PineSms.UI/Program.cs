@@ -1,19 +1,30 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using OfficeOpenXml;
 using PineSms.UI.Components;
 using PineSms.UI.Services;
 
-ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddHttpClient<ApiClientService>(client =>
+// Register a named HttpClient so we can resolve it inside a Scoped factory below.
+// AddHttpClient<T> registers ApiClientService as Transient, which means each Blazor
+// component injection gets a different instance than the one held by AuthStateService,
+// so the JWT token set by AuthStateService would never reach the components.
+// Using a named client + explicit Scoped registration ensures one shared instance per
+// Blazor circuit (user connection), so SetToken() is visible to every component.
+builder.Services.AddHttpClient("PineSmsApiClient", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5001");
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5161/");
+});
+builder.Services.AddScoped<ApiClientService>(sp =>
+{
+    var factory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = factory.CreateClient("PineSmsApiClient");
+    return new ApiClientService(httpClient);
 });
 
 builder.Services.AddScoped<AuthStateService>();
