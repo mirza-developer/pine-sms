@@ -1,0 +1,40 @@
+@using PineSms.UI.Services
+@inject AuthStateService AuthState
+
+<nav class="nav-menu">
+    @if (AuthState.IsAuthenticated)
+    {
+        <div class="nav-section-label">منو</div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill nav-icon" aria-hidden="true"></span>
+                <span class="nav-text">خانه</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-section-label">مشتریان</div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="customer/add">
+                <span class="bi bi-person-plus-fill nav-icon" aria-hidden="true"></span>
+                <span class="nav-text">افزودن مشتری</span>
+            </NavLink>
+        </div>
+        <div class="nav-item">
+            <NavLink class="nav-link" href="customer/import">
+                <span class="bi bi-file-earmark-excel-fill nav-icon" aria-hidden="true"></span>
+                <span class="nav-text">ورود از اکسل</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-section-label">پیامک</div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="sms/send">
+                <span class="bi bi-chat-dots-fill nav-icon" aria-hidden="true"></span>
+                <span class="nav-text">ارسال پیامک</span>
+            </NavLink>
+        </div>
+    }
+</nav>

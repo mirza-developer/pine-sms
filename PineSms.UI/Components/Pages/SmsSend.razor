@@ -1,0 +1,251 @@
+@page "/sms/send"
+@using PineSms.UI.Services
+@using PineSms.Core.Features.Sms
+@using PineSms.Core.Entities
+@inject ApiClientService ApiClient
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@inject NotificationService NotificationService
+
+<PageTitle>ارسال پیامک</PageTitle>
+
+@if (!AuthState.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+    return;
+}
+
+<div class="container-fluid px-3 px-md-4 mt-4">
+    <div class="page-header">
+        <h4><span class="bi bi-chat-dots-fill me-2 text-primary"></span>ارسال پیامک</h4>
+    </div>
+
+    @if (!string.IsNullOrEmpty(alertMessage))
+    {
+        <div class="alert @alertClass alert-dismissible">
+            @alertMessage
+            <button type="button" class="btn-close" @onclick="() => alertMessage = string.Empty"></button>
+        </div>
+    }
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
+                <h6 class="mb-3">فیلتر بازه زمانی</h6>
+                <div class="mb-2">
+                    <select class="form-select" @bind="selectedRange" @bind:after="OnRangeChanged">
+                        <option value="LastWeek">یک هفته اخیر</option>
+                        <option value="LastTwoWeeks">دو هفته اخیر</option>
+                        <option value="LastMonth">یک ماه اخیر</option>
+                        <option value="LastSeason">یک فصل اخیر</option>
+                        <option value="LastYear">یک سال اخیر</option>
+                        <option value="Custom">سفارشی</option>
+                    </select>
+                </div>
+                @if (selectedRange == "Custom")
+                {
+                    <div class="mb-2">
+                        <label class="form-label">از تاریخ</label>
+                        <input type="date" class="form-control" @bind="customFrom" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">تا تاریخ</label>
+                        <input type="date" class="form-control" @bind="customTo" />
+                    </div>
+                }
+                <button class="btn btn-outline-primary btn-sm" @onclick="LoadCustomers" disabled="@isLoadingCustomers">
+                    @if (isLoadingCustomers) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    جستجوی مشتریان
+                </button>
+            </div>
+
+            <div class="card shadow-sm p-3 mt-3">
+                <h6 class="mb-3">تنظیمات پیامک</h6>
+                <div class="mb-2">
+                    <label class="form-label">شماره فرستنده</label>
+                    <input type="text" class="form-control" @bind="fromNumber" placeholder="شماره پنل" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">متن پیامک</label>
+                    <textarea class="form-control" rows="4" @bind="messageText" placeholder="متن پیامک خود را وارد کنید..."></textarea>
+                </div>
+                <button class="btn btn-success" @onclick="HandleSendSms" disabled="@(isSending || selectedIds.Count == 0)">
+                    @if (isSending) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                    ارسال به @selectedIds.Count نفر
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">لیست مشتریان (@customers.Count نفر) | انتخاب شده: @selectedIds.Count</h6>
+                </div>
+                <div class="table-responsive-wrapper" style="max-height:500px; overflow-y:auto;">
+                    <table class="table table-sm table-hover table-bordered">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width:40px; text-align:center;">
+                                    <input type="checkbox"
+                                           checked="@allSelected"
+                                           @onchange="ToggleAll"
+                                           title="انتخاب/حذف همه" />
+                                </th>
+                                <th>شماره موبایل</th>
+                                <th>نام</th>
+                                <th>جنسیت</th>
+                                <th>تاریخ ثبت</th>
+                                <th>آخرین استفاده</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in customers)
+                            {
+                                <tr class="@(selectedIds.Contains(c.Id) ? "table-primary" : "")"
+                                    style="cursor:pointer;" @onclick="() => ToggleRow(c.Id)">
+                                    <td style="text-align:center;">
+                                        <input type="checkbox"
+                                               checked="@selectedIds.Contains(c.Id)"
+                                               @onchange="e => ToggleSelection(c.Id, (bool)(e.Value ?? false))"
+                                               @onclick:stopPropagation="true" />
+                                    </td>
+                                    <td>@c.PhoneNumber</td>
+                                    <td>@(c.Name ?? "-")</td>
+                                    <td>@(c.Gender == 1 ? "مرد" : c.Gender == 2 ? "زن" : "-")</td>
+                                    <td>@PersianDateHelper.ToPersianDate(c.SaveDate)</td>
+                                    <td>@(c.LastUsageDate.HasValue ? PersianDateHelper.ToPersianDate(c.LastUsageDate.Value) : "-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (customers.Count == 0 && !isLoadingCustomers)
+                    {
+                        <div class="text-center text-muted py-4">ابتدا بازه زمانی را انتخاب کرده و جستجو کنید</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Customer> customers = new();
+    private HashSet<int> selectedIds = new();
+    private string selectedRange = "LastMonth";
+    private DateTime customFrom = DateTime.Today.AddMonths(-1);
+    private DateTime customTo = DateTime.Today;
+    private string fromNumber = string.Empty;
+    private string messageText = string.Empty;
+    private string alertMessage = string.Empty;
+    private string alertClass = "alert-info";
+    private bool isLoadingCustomers = false;
+    private bool isSending = false;
+
+    private bool allSelected => customers.Count > 0 && selectedIds.Count == customers.Count;
+
+    private void OnRangeChanged()
+    {
+        if (selectedRange != "Custom")
+        {
+            customFrom = PersianDateHelper.GetDateRangeFrom(selectedRange);
+            customTo = DateTime.UtcNow;
+        }
+    }
+
+    private async Task LoadCustomers()
+    {
+        isLoadingCustomers = true;
+        selectedIds.Clear();
+        try
+        {
+            var from = selectedRange == "Custom" ? customFrom : PersianDateHelper.GetDateRangeFrom(selectedRange);
+            var to = selectedRange == "Custom" ? customTo : DateTime.UtcNow;
+            var result = await ApiClient.GetCustomersByRangeAsync(from, to);
+            customers = result ?? new List<Customer>();
+            // Initially select all
+            selectedIds = customers.Select(c => c.Id).ToHashSet();
+            if (customers.Count == 0)
+                NotificationService.ShowInformation("هیچ مشتری در این بازه زمانی یافت نشد");
+            else
+                NotificationService.ShowSuccess($"{customers.Count} مشتری یافت شد");
+        }
+        catch
+        {
+            NotificationService.ShowError("خطا در بارگذاری مشتریان");
+            alertClass = "alert-danger";
+            alertMessage = "خطا در بارگذاری مشتریان";
+        }
+        finally
+        {
+            isLoadingCustomers = false;
+        }
+    }
+
+    private void ToggleSelection(int id, bool selected)
+    {
+        if (selected) selectedIds.Add(id);
+        else selectedIds.Remove(id);
+    }
+
+    private void ToggleRow(int id)
+    {
+        if (selectedIds.Contains(id)) selectedIds.Remove(id);
+        else selectedIds.Add(id);
+    }
+
+    private void ToggleAll(ChangeEventArgs e)
+    {
+        bool check = (bool)(e.Value ?? false);
+        if (check) selectedIds = customers.Select(c => c.Id).ToHashSet();
+        else selectedIds.Clear();
+    }
+
+    private void SelectAll() => selectedIds = customers.Select(c => c.Id).ToHashSet();
+    private void DeselectAll() => selectedIds.Clear();
+
+    private async Task HandleSendSms()
+    {
+        if (string.IsNullOrEmpty(messageText))
+        {
+            alertClass = "alert-warning";
+            alertMessage = "لطفاً متن پیامک را وارد کنید";
+            return;
+        }
+        if (string.IsNullOrEmpty(fromNumber))
+        {
+            alertClass = "alert-warning";
+            alertMessage = "لطفاً شماره فرستنده را وارد کنید";
+            return;
+        }
+        isSending = true;
+        try
+        {
+            var command = new SendSmsCommand
+            {
+                CustomerIds = selectedIds.ToList(),
+                MessageText = messageText,
+                FromNumber = fromNumber,
+                DateRangeType = selectedRange,
+                CustomFrom = selectedRange == "Custom" ? customFrom : null,
+                CustomTo = selectedRange == "Custom" ? customTo : null
+            };
+            var result = await ApiClient.SendSmsAsync(command);
+            if (result?.Success == true)
+                NotificationService.ShowSuccess(result.Message);
+            else
+                NotificationService.ShowError(result?.Message ?? "خطا در ارسال");
+            alertClass = result?.Success == true ? "alert-success" : "alert-danger";
+            alertMessage = result?.Message ?? "خطا در ارسال";
+        }
+        catch
+        {
+            NotificationService.ShowError("خطا در اتصال به سرور");
+            alertClass = "alert-danger";
+            alertMessage = "خطا در اتصال به سرور";
+        }
+        finally
+        {
+            isSending = false;
+        }
+    }
+}
