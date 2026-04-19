@@ -1,5 +1,4 @@
 @page "/login"
-@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using PineSms.UI.Services
 @using PineSms.Core.Features.Account
 @inject ApiClientService ApiClient
@@ -59,7 +58,7 @@
             var result = await ApiClient.LoginAsync(loginModel);
             if (result?.Success == true)
             {
-                AuthState.SetToken(result.Token);
+                await AuthState.SetTokenAsync(result.Token);
                 Navigation.NavigateTo("/");
             }
             else
