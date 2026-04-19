@@ -93,14 +93,28 @@ public class CustomerRepository : ICustomerService
         }
 
         var toInsert = distinctValid.Except(existingNumbers).ToList();
-        var now = DateTime.UtcNow;
+        
+        DateTime saveDate = DateTime.UtcNow;
+        if (!string.IsNullOrEmpty(command.SaveDate))
+        {
+            var pc2 = new System.Globalization.PersianCalendar();
+            var parts = command.SaveDate.Split('/');
+            if (parts.Length == 3 &&
+                int.TryParse(parts[0], out int y) &&
+                int.TryParse(parts[1], out int m) &&
+                int.TryParse(parts[2], out int d))
+            {
+                try { saveDate = pc2.ToDateTime(y, m, d, 0, 0, 0, 0); }
+                catch { saveDate = DateTime.UtcNow; }
+            }
+        }
         
         foreach (var phone in toInsert)
         {
             dbContext.Customer.Add(new Customer
             {
                 PhoneNumber = phone,
-                SaveDate = now,
+                SaveDate = saveDate,
                 SaveUserId = userId,
                 SaveType = 2
             });
@@ -111,7 +125,7 @@ public class CustomerRepository : ICustomerService
             .ToListAsync();
         
         foreach (var entity in duplicateEntities)
-            entity.LastUsageDate = now;
+            entity.LastUsageDate = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync();
         

@@ -64,6 +64,22 @@ public class ApiClientService
         var response = await httpClient.PostAsJsonAsync("api/sms/send", command);
         return await response.Content.ReadFromJsonAsync<SendSmsResult>();
     }
+
+    public async Task<ScheduleSmsResult?> ScheduleSmsAsync(ScheduleSmsCommand command)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/sms/schedule", command);
+        return await response.Content.ReadFromJsonAsync<ScheduleSmsResult>();
+    }
+
+    public async Task<List<SmsSendJobDto>?> GetSmsJobsAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<SmsSendJobDto>>("api/sms/jobs");
+    }
+
+    public async Task<SmsSendJobDto?> GetSmsJobAsync(int id)
+    {
+        return await httpClient.GetFromJsonAsync<SmsSendJobDto>($"api/sms/jobs/{id}");
+    }
 }
 
 public class MessageResponse

@@ -11,7 +11,7 @@
 <div class="container-fluid px-3 px-md-4 mt-4">
     <div class="page-header">
         <h4>وارد کردن مشتریان</h4>
-        <span class="badge bg-info">آپلود اکسل</span>
+        <span class="badge bg-info">آپلود فایل</span>
     </div>
 
     @if (!string.IsNullOrEmpty(alertMessage))
@@ -53,16 +53,23 @@
     <div class="card shadow-sm">
         <div class="card-body p-4">
             <div class="mb-4">
-                <label class="form-label fw-semibold">انتخاب فایل اکسل</label>
-                <InputFile class="form-control" OnChange="HandleFileSelected" accept=".xlsx,.xls,.csv" />
+                <label class="form-label fw-semibold">انتخاب فایل</label>
+                <InputFile class="form-control" OnChange="HandleFileSelected" accept=".xlsx,.xls,.csv,.txt" />
                 <div class="form-text text-muted mt-2">
                     <ul class="mb-0 ps-3">
-                        <li>فرمت فایل: <code>.xlsx</code>، <code>.xls</code> یا <code>.csv</code></li>
-                        <li>ستون اول: شماره موبایل (۱۰ رقم، بدون صفر ابتدایی، شروع با ۹)</li>
-                        <li>ردیف اول: عنوان ستون (نادیده گرفته می‌شود)</li>
+                        <li>فرمت فایل: <code>.xlsx</code>، <code>.xls</code>، <code>.csv</code> یا <code>.txt</code></li>
+                        <li>فایل متنی (<code>.txt</code>): هر خط یک شماره موبایل</li>
+                        <li>ستون اول (اکسل/CSV): شماره موبایل (۱۰ رقم، بدون صفر ابتدایی، شروع با ۹)</li>
+                        <li>ردیف اول (اکسل/CSV): عنوان ستون (نادیده گرفته می‌شود)</li>
                         <li>مثال: <code>9903063085</code></li>
                     </ul>
                 </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">تاریخ ثبت (اختیاری)</label>
+                <PersianDatePicker @bind-Value="saveDate" />
+                <div class="form-text text-muted">در صورت خالی بودن، تاریخ جاری استفاده می‌شود</div>
             </div>
 
             @if (phoneNumbers.Count > 0)
@@ -93,6 +100,7 @@
     private string alertClass = "alert-info";
     private bool isLoading = false;
     private bool showIgnoreButton = false;
+    private string? saveDate;
 
     // Matches a 10-digit Iranian mobile number starting with 9 (no country code, no leading 0)
     private static readonly System.Text.RegularExpressions.Regex PhonePattern =
@@ -104,30 +112,38 @@
         ClearAlert();
         try
         {
+            var fileName = e.File.Name.ToLowerInvariant();
             using var stream = e.File.OpenReadStream(maxAllowedSize: 52_428_800); // 50 MB
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
             ms.Position = 0;
 
-            // Peek at the first bytes to decide the format before trying ExcelDataReader
-            bool isHtml = StartsWithHtml(ms);
-            ms.Position = 0;
-
-            if (isHtml)
+            if (fileName.EndsWith(".txt"))
             {
-                ReadFromHtml(ms);
+                ReadFromTxt(ms);
             }
             else
             {
-                try
+                // Peek at the first bytes to decide the format before trying ExcelDataReader
+                bool isHtml = StartsWithHtml(ms);
+                ms.Position = 0;
+
+                if (isHtml)
                 {
-                    ReadFromExcel(ms);
+                    ReadFromHtml(ms);
                 }
-                catch (Exception)
+                else
                 {
-                    // Not a recognised binary/OOXML Excel format; try plain-text/CSV
-                    ms.Position = 0;
-                    ReadFromCsv(ms);
+                    try
+                    {
+                        ReadFromExcel(ms);
+                    }
+                    catch (Exception)
+                    {
+                        // Not a recognised binary/OOXML Excel format; try plain-text/CSV
+                        ms.Position = 0;
+                        ReadFromCsv(ms);
+                    }
                 }
             }
 
@@ -235,6 +251,19 @@
         }
     }
 
+    /// <summary>Reads phone numbers from a plain .txt file where each line is one number.</summary>
+    private void ReadFromTxt(MemoryStream ms)
+    {
+        using var sr = new StreamReader(ms, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+        string? line;
+        while ((line = sr.ReadLine()) != null)
+        {
+            var val = line.Trim();
+            if (!string.IsNullOrEmpty(val))
+                phoneNumbers.Add(val);
+        }
+    }
+
     private async Task HandleImport() => await ImportAsync(false);
     private async Task HandleIgnoreAndImport() => await ImportAsync(true);
 
@@ -244,7 +273,12 @@
         showIgnoreButton = false;
         try
         {
-            var command = new ImportCustomersCommand { PhoneNumbers = phoneNumbers, IgnoreInvalid = ignoreInvalid };
+            var command = new ImportCustomersCommand
+            {
+                PhoneNumbers = phoneNumbers,
+                IgnoreInvalid = ignoreInvalid,
+                SaveDate = saveDate
+            };
             var result = await ApiClient.ImportCustomersAsync(command);
             if (result != null)
             {
@@ -279,4 +313,3 @@
         showIgnoreButton = false;
     }
 }
-

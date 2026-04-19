@@ -21,4 +21,6 @@ public class PineSmsDbContext : DbContext
 
     public DbSet<Customer> Customer { get; set; }
     public DbSet<SmsLog> SmsLog { get; set; }
+    public DbSet<SmsSendJob> SmsSendJob { get; set; }
+    public DbSet<SmsSendJobPart> SmsSendJobPart { get; set; }
 }
