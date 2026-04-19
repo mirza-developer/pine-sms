@@ -10,40 +10,48 @@
     return;
 }
 
-<div class="container mt-4">
-    <div class="jumbotron">
-        <h2 class="text-primary">خوش آمدید، @AuthState.PersianName 👋</h2>
-        <p class="lead text-muted">سیستم مدیریت پیامک PineSms</p>
-        <hr />
-        <div class="row row-cols-1 row-cols-md-3 g-4 mt-2">
-            <div class="col">
-                <div class="card h-100 text-center border-success">
-                    <div class="card-body">
-                        <h1>➕</h1>
-                        <h5 class="card-title">افزودن مشتری</h5>
-                        <p class="card-text text-muted">ثبت مشتری جدید از طریق فرم</p>
-                        <a href="/customer/add" class="btn btn-success">شروع</a>
+<div class="container-fluid px-3 px-md-4 mt-4">
+    <div class="mb-4">
+        <h4 class="fw-bold text-primary mb-1">
+            <span class="bi bi-tree-fill me-2"></span>خوش آمدید، @AuthState.PersianName
+        </h4>
+        <p class="text-muted mb-0">سیستم مدیریت پیامک PineSms</p>
+    </div>
+    <hr class="mb-4" />
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+        <div class="col">
+            <div class="card h-100 text-center shadow-sm border-0">
+                <div class="card-body py-4">
+                    <div class="mb-3">
+                        <span class="bi bi-person-plus-fill text-success" style="font-size:2.5rem;"></span>
                     </div>
+                    <h5 class="card-title fw-semibold">افزودن مشتری</h5>
+                    <p class="card-text text-muted small">ثبت مشتری جدید از طریق فرم</p>
+                    <a href="/customer/add" class="btn btn-success btn-sm px-4">شروع</a>
                 </div>
             </div>
-            <div class="col">
-                <div class="card h-100 text-center border-info">
-                    <div class="card-body">
-                        <h1>📥</h1>
-                        <h5 class="card-title">ورود از اکسل</h5>
-                        <p class="card-text text-muted">وارد کردن مشتریان از فایل اکسل</p>
-                        <a href="/customer/import" class="btn btn-info">شروع</a>
+        </div>
+        <div class="col">
+            <div class="card h-100 text-center shadow-sm border-0">
+                <div class="card-body py-4">
+                    <div class="mb-3">
+                        <span class="bi bi-file-earmark-excel-fill text-info" style="font-size:2.5rem;"></span>
                     </div>
+                    <h5 class="card-title fw-semibold">ورود از اکسل</h5>
+                    <p class="card-text text-muted small">وارد کردن مشتریان از فایل اکسل</p>
+                    <a href="/customer/import" class="btn btn-info btn-sm px-4">شروع</a>
                 </div>
             </div>
-            <div class="col">
-                <div class="card h-100 text-center border-primary">
-                    <div class="card-body">
-                        <h1>📨</h1>
-                        <h5 class="card-title">ارسال پیامک</h5>
-                        <p class="card-text text-muted">ارسال پیامک انبوه به مشتریان</p>
-                        <a href="/sms/send" class="btn btn-primary">شروع</a>
+        </div>
+        <div class="col">
+            <div class="card h-100 text-center shadow-sm border-0">
+                <div class="card-body py-4">
+                    <div class="mb-3">
+                        <span class="bi bi-chat-dots-fill text-primary" style="font-size:2.5rem;"></span>
                     </div>
+                    <h5 class="card-title fw-semibold">ارسال پیامک</h5>
+                    <p class="card-text text-muted small">ارسال پیامک انبوه به مشتریان</p>
+                    <a href="/sms/send" class="btn btn-primary btn-sm px-4">شروع</a>
                 </div>
             </div>
         </div>

@@ -19,6 +19,9 @@ builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateService>());
 builder.Services.AddScoped<NotificationService>();
 
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -29,11 +32,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseAntiforgery();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
-
-app.Run();
-
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

@@ -15,9 +15,9 @@
     return;
 }
 
-<div class="container mt-4">
-    <div class="d-flex align-items-center mb-4">
-        <h4 class="mb-0 me-2">افزودن مشتری جدید</h4>
+<div class="container-fluid px-3 px-md-4 mt-4">
+    <div class="page-header">
+        <h4>افزودن مشتری جدید</h4>
         <span class="badge bg-success">فرم ورود دستی</span>
     </div>
 
@@ -56,16 +56,18 @@
                         <PersianDatePicker @bind-Value="command.BirthDate" />
                     </div>
                     <div class="col-12 mt-3">
-                        <button type="submit" class="btn btn-success px-4" disabled="@isLoading">
-                            @if (isLoading)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2"></span>
-                            }
-                            ثبت مشتری
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary me-2" @onclick="Reset">
-                            پاک کردن
-                        </button>
+                        <div class="btn-group-rtl">
+                            <button type="submit" class="btn btn-success px-4" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <span class="bi bi-check-circle me-1"></span>ثبت مشتری
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="Reset">
+                                <span class="bi bi-arrow-counterclockwise me-1"></span>پاک کردن
+                            </button>
+                        </div>
                     </div>
                 </div>
             </EditForm>

@@ -16,8 +16,10 @@
     return;
 }
 
-<div class="container-fluid mt-4" style="direction:rtl;">
-    <h4 class="mb-4">📨 ارسال پیامک</h4>
+<div class="container-fluid px-3 px-md-4 mt-4">
+    <div class="page-header">
+        <h4><span class="bi bi-chat-dots-fill me-2 text-primary"></span>ارسال پیامک</h4>
+    </div>
 
     @if (!string.IsNullOrEmpty(alertMessage))
     {
@@ -80,7 +82,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">لیست مشتریان (@customers.Count نفر) | انتخاب شده: @selectedIds.Count</h6>
                 </div>
-                <div style="max-height:500px; overflow-y:auto;">
+                <div class="table-responsive-wrapper" style="max-height:500px; overflow-y:auto;">
                     <table class="table table-sm table-hover table-bordered">
                         <thead class="table-dark">
                             <tr>
