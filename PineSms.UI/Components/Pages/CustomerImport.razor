@@ -54,10 +54,10 @@
         <div class="card-body p-4">
             <div class="mb-4">
                 <label class="form-label fw-semibold">انتخاب فایل اکسل</label>
-                <InputFile class="form-control" OnChange="HandleFileSelected" accept=".xlsx,.xls" />
+                <InputFile class="form-control" OnChange="HandleFileSelected" accept=".xlsx,.xls,.csv" />
                 <div class="form-text text-muted mt-2">
                     <ul class="mb-0 ps-3">
-                        <li>فرمت فایل: <code>.xlsx</code> یا <code>.xls</code></li>
+                        <li>فرمت فایل: <code>.xlsx</code>، <code>.xls</code> یا <code>.csv</code></li>
                         <li>ستون اول: شماره موبایل (۱۰ رقم، بدون صفر ابتدایی، شروع با ۹)</li>
                         <li>ردیف اول: عنوان ستون (نادیده گرفته می‌شود)</li>
                         <li>مثال: <code>9903063085</code></li>
@@ -105,23 +105,21 @@
             await stream.CopyToAsync(ms);
             ms.Position = 0;
 
-            using var reader = ExcelReaderFactory.CreateReader(ms);
-            // Skip header row
-            if (!reader.Read())
+            try
             {
-                NotificationService.ShowWarning("فایل اکسل خالی است");
-                return;
+                ReadFromExcel(ms);
             }
-            while (reader.Read())
+            catch (ExcelDataReader.Exceptions.HeaderException)
             {
-                var val = reader.GetValue(0)?.ToString()?.Trim();
-                if (!string.IsNullOrEmpty(val))
-                    phoneNumbers.Add(val);
+                // File is not a recognised binary/OOXML Excel format (e.g. CSV or HTML
+                // saved with an .xls extension). Fall back to plain-text reading.
+                ms.Position = 0;
+                ReadFromText(ms);
             }
 
             if (phoneNumbers.Count == 0)
             {
-                NotificationService.ShowWarning("فایل اکسل خالی است");
+                NotificationService.ShowWarning("فایل خالی است");
                 return;
             }
             NotificationService.ShowInformation($"{phoneNumbers.Count} شماره از فایل خوانده شد");
@@ -129,6 +127,38 @@
         catch (Exception ex)
         {
             NotificationService.ShowError($"خطا در خواندن فایل: {ex.Message}");
+        }
+    }
+
+    private void ReadFromExcel(MemoryStream ms)
+    {
+        using var reader = ExcelReaderFactory.CreateReader(ms);
+        // Skip header row
+        if (!reader.Read())
+        {
+            return;
+        }
+        while (reader.Read())
+        {
+            var val = reader.GetValue(0)?.ToString()?.Trim();
+            if (!string.IsNullOrEmpty(val))
+                phoneNumbers.Add(val);
+        }
+    }
+
+    private void ReadFromText(MemoryStream ms)
+    {
+        using var sr = new StreamReader(ms, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+        // Skip header row
+        if (sr.ReadLine() == null) return;
+        string? line;
+        while ((line = sr.ReadLine()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            // Support comma, semicolon, tab, or pipe as delimiters; take first column
+            var val = line.Split(',', ';', '\t', '|')[0].Trim().Trim('"');
+            if (!string.IsNullOrEmpty(val))
+                phoneNumbers.Add(val);
         }
     }
 
