@@ -105,10 +105,17 @@ namespace PineSms.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(name: "SmsSendJobPart");
-            migrationBuilder.DropTable(name: "SmsSendJob");
-            migrationBuilder.DropTable(name: "SmsLog");
-            migrationBuilder.DropTable(name: "Customer");
+            migrationBuilder.DropTable(
+                name: "SmsSendJobPart");
+
+            migrationBuilder.DropTable(
+                name: "SmsSendJob");
+
+            migrationBuilder.DropTable(
+                name: "SmsLog");
+
+            migrationBuilder.DropTable(
+                name: "Customer");
         }
     }
 }
