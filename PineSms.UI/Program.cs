@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using OfficeOpenXml;
 using PineSms.UI.Components;
 using PineSms.UI.Services;
-
-ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 var builder = WebApplication.CreateBuilder(args);
 

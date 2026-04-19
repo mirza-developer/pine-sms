@@ -2,7 +2,8 @@
 @using Microsoft.AspNetCore.Authorization
 @using PineSms.UI.Services
 @using PineSms.Core.Features.Customer
-@using OfficeOpenXml
+@using DocumentFormat.OpenXml.Packaging
+@using DocumentFormat.OpenXml.Spreadsheet
 @inject ApiClientService ApiClient
 @inject NotificationService NotificationService
 
@@ -100,23 +101,49 @@
         ClearAlert();
         try
         {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             using var stream = e.File.OpenReadStream(maxAllowedSize: 52_428_800); // 50 MB
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
             ms.Position = 0;
-            using var package = new ExcelPackage(ms);
-            var sheet = package.Workbook.Worksheets[0];
-            if (sheet.Dimension == null)
+
+            using var document = SpreadsheetDocument.Open(ms, false);
+            var workbookPart = document.WorkbookPart
+                ?? throw new InvalidOperationException("فایل اکسل معتبر نیست");
+
+            var workbook = workbookPart.Workbook
+                ?? throw new InvalidOperationException("فایل اکسل معتبر نیست");
+            var sheet = workbook.Descendants<Sheet>().FirstOrDefault()
+                ?? throw new InvalidOperationException("شیتی در فایل اکسل یافت نشد");
+
+            var sheetId = sheet.Id?.Value
+                ?? throw new InvalidOperationException("شناسه شیت اکسل معتبر نیست");
+            var worksheetPart = (WorksheetPart)workbookPart.GetPartById(sheetId);
+            var worksheet = worksheetPart.Worksheet
+                ?? throw new InvalidOperationException("شیت اکسل بارگذاری نشد");
+            var rows = worksheet.Descendants<Row>().OrderBy(r => r.RowIndex?.Value ?? 0).ToList();
+
+            // Build shared strings table for fast lookup
+            var sharedStringTable = workbookPart.SharedStringTablePart?.SharedStringTable;
+            var sharedStrings = sharedStringTable != null
+                ? sharedStringTable.Elements<SharedStringItem>().Select(s => s.InnerText).ToList()
+                : null;
+
+            // Skip header row (row index 1)
+            foreach (var row in rows.Where(r => (r.RowIndex?.Value ?? 0) > 1))
+            {
+                var cell = row.Descendants<Cell>()
+                    .FirstOrDefault(c => GetColumnName(c.CellReference?.Value) == "A");
+                if (cell == null) continue;
+
+                var val = GetCellValue(cell, sharedStrings);
+                if (!string.IsNullOrEmpty(val))
+                    phoneNumbers.Add(val);
+            }
+
+            if (phoneNumbers.Count == 0)
             {
                 NotificationService.ShowWarning("فایل اکسل خالی است");
                 return;
-            }
-            for (int row = 2; row <= sheet.Dimension.End.Row; row++)
-            {
-                var val = sheet.Cells[row, 1].Value?.ToString()?.Trim();
-                if (!string.IsNullOrEmpty(val))
-                    phoneNumbers.Add(val);
             }
             NotificationService.ShowInformation($"{phoneNumbers.Count} شماره از فایل خوانده شد");
         }
@@ -124,6 +151,28 @@
         {
             NotificationService.ShowError($"خطا در خواندن فایل: {ex.Message}");
         }
+    }
+
+    private static string GetColumnName(string? cellReference)
+    {
+        if (string.IsNullOrEmpty(cellReference)) return string.Empty;
+        return new string(cellReference.TakeWhile(char.IsLetter).ToArray());
+    }
+
+    private static string GetCellValue(Cell cell, List<string>? sharedStrings)
+    {
+        var raw = cell.CellValue?.Text?.Trim();
+        if (string.IsNullOrEmpty(raw)) return string.Empty;
+
+        if (cell.DataType?.Value == CellValues.SharedString
+            && sharedStrings != null
+            && int.TryParse(raw, out var idx)
+            && idx >= 0 && idx < sharedStrings.Count)
+        {
+            return sharedStrings[idx];
+        }
+
+        return raw;
     }
 
     private async Task HandleImport() => await ImportAsync(false);
