@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using PineSms.UI.Components;
 using PineSms.UI.Services;
 
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
