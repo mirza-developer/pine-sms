@@ -14,37 +14,86 @@
     {
         <div class="persian-datepicker-popup" @onclick:stopPropagation="true">
             <div class="datepicker-header">
-                <button type="button" class="btn btn-sm btn-link" @onclick="PrevMonth">❯</button>
-                <span class="datepicker-title">@PersianMonthNames[currentMonth - 1] @currentYear</span>
-                <button type="button" class="btn btn-sm btn-link" @onclick="NextMonth">❮</button>
-            </div>
-            <div class="datepicker-weekdays">
-                @foreach (var day in DayNames)
+                <button type="button" class="btn btn-sm btn-link" @onclick="NavigatePrev">❯</button>
+                @if (currentMode == DatePickerMode.Days)
                 {
-                    <div class="weekday">@day</div>
+                    <span class="datepicker-title">
+                        <span class="datepicker-nav-link" @onclick="SwitchToMonths">@PersianMonthNames[currentMonth - 1]</span>
+                        &nbsp;
+                        <span class="datepicker-nav-link" @onclick="SwitchToYears">@currentYear</span>
+                    </span>
                 }
-            </div>
-            <div class="datepicker-grid">
-                @foreach (var cell in calendarCells)
+                else if (currentMode == DatePickerMode.Months)
                 {
-                    <div class="datepicker-cell @GetCellClass(cell)"
-                         @onclick="() => SelectDate(cell)">
-                        @cell.Day
-                    </div>
+                    <span class="datepicker-title">
+                        <span class="datepicker-nav-link" @onclick="SwitchToYears">@currentYear</span>
+                    </span>
                 }
+                else
+                {
+                    <span class="datepicker-title">@yearsViewStart – @(yearsViewStart + 11)</span>
+                }
+                <button type="button" class="btn btn-sm btn-link" @onclick="NavigateNext">❮</button>
             </div>
+
+            @if (currentMode == DatePickerMode.Days)
+            {
+                <div class="datepicker-weekdays">
+                    @foreach (var day in DayNames)
+                    {
+                        <div class="weekday">@day</div>
+                    }
+                </div>
+                <div class="datepicker-grid">
+                    @foreach (var cell in calendarCells)
+                    {
+                        <div class="datepicker-cell @GetCellClass(cell)"
+                             @onclick="() => SelectDate(cell)">
+                            @cell.Day
+                        </div>
+                    }
+                </div>
+            }
+            else if (currentMode == DatePickerMode.Months)
+            {
+                <div class="datepicker-months-grid">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var month = m;
+                        <div class="datepicker-month-cell @GetMonthClass(month)" @onclick="() => SelectMonth(month)">
+                            @PersianMonthNames[month - 1]
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="datepicker-years-grid">
+                    @for (int i = 0; i < 12; i++)
+                    {
+                        var year = yearsViewStart + i;
+                        <div class="datepicker-year-cell @GetYearClass(year)" @onclick="() => SelectYear(year)">
+                            @year
+                        </div>
+                    }
+                </div>
+            }
         </div>
         <div class="datepicker-overlay" @onclick="CloseCalendar"></div>
     }
 </div>
 
 @code {
+    private enum DatePickerMode { Days, Months, Years }
+
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
     private bool isOpen = false;
     private int currentYear;
     private int currentMonth;
+    private int yearsViewStart;
+    private DatePickerMode currentMode = DatePickerMode.Days;
     private List<CalendarCell> calendarCells = new();
 
     private static readonly System.Globalization.PersianCalendar pc = new();
@@ -80,24 +129,71 @@
             currentYear = pc.GetYear(now);
             currentMonth = pc.GetMonth(now);
         }
+        yearsViewStart = currentYear - (currentYear % 12);
         BuildCalendar();
     }
 
     private void ToggleCalendar() => isOpen = !isOpen;
     private void CloseCalendar() => isOpen = false;
 
-    private void PrevMonth()
+    private void SwitchToMonths()
     {
-        currentMonth--;
-        if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+        currentMode = DatePickerMode.Months;
+    }
+
+    private void SwitchToYears()
+    {
+        yearsViewStart = currentYear - (currentYear % 12);
+        currentMode = DatePickerMode.Years;
+    }
+
+    private void NavigatePrev()
+    {
+        if (currentMode == DatePickerMode.Days)
+        {
+            currentMonth--;
+            if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+            BuildCalendar();
+        }
+        else if (currentMode == DatePickerMode.Months)
+        {
+            currentYear--;
+        }
+        else
+        {
+            yearsViewStart -= 12;
+        }
+    }
+
+    private void NavigateNext()
+    {
+        if (currentMode == DatePickerMode.Days)
+        {
+            currentMonth++;
+            if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+            BuildCalendar();
+        }
+        else if (currentMode == DatePickerMode.Months)
+        {
+            currentYear++;
+        }
+        else
+        {
+            yearsViewStart += 12;
+        }
+    }
+
+    private void SelectMonth(int month)
+    {
+        currentMonth = month;
+        currentMode = DatePickerMode.Days;
         BuildCalendar();
     }
 
-    private void NextMonth()
+    private void SelectYear(int year)
     {
-        currentMonth++;
-        if (currentMonth > 12) { currentMonth = 1; currentYear++; }
-        BuildCalendar();
+        currentYear = year;
+        currentMode = DatePickerMode.Months;
     }
 
     private void BuildCalendar()
@@ -149,6 +245,36 @@
             if (selectedDate == Value) classes.Add("selected");
         }
 
+        return string.Join(" ", classes);
+    }
+
+    private string GetMonthClass(int month)
+    {
+        var classes = new List<string>();
+        var today = DateTime.Now;
+        if (currentYear == pc.GetYear(today) && month == pc.GetMonth(today))
+            classes.Add("today");
+        if (!string.IsNullOrEmpty(Value))
+        {
+            var parts = Value.Split('/');
+            if (parts.Length == 3 && int.TryParse(parts[0], out int y) && int.TryParse(parts[1], out int m))
+                if (y == currentYear && m == month) classes.Add("selected");
+        }
+        return string.Join(" ", classes);
+    }
+
+    private string GetYearClass(int year)
+    {
+        var classes = new List<string>();
+        var today = DateTime.Now;
+        if (year == pc.GetYear(today))
+            classes.Add("today");
+        if (!string.IsNullOrEmpty(Value))
+        {
+            var parts = Value.Split('/');
+            if (parts.Length == 3 && int.TryParse(parts[0], out int y))
+                if (y == year) classes.Add("selected");
+        }
         return string.Join(" ", classes);
     }
 

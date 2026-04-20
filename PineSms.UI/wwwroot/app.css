@@ -230,6 +230,42 @@ h1:focus {
 .datepicker-cell.selected { background: #1b6ec2; color: white; }
 .datepicker-cell.other-month { color: #adb5bd; }
 
+.datepicker-nav-link {
+    cursor: pointer;
+    border-radius: .25rem;
+    padding: .1rem .3rem;
+    transition: background .15s;
+}
+
+.datepicker-nav-link:hover { background: #e9ecef; }
+
+.datepicker-months-grid,
+.datepicker-years-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: .25rem;
+}
+
+.datepicker-month-cell,
+.datepicker-year-cell {
+    padding: .5rem .25rem;
+    border-radius: .3rem;
+    cursor: pointer;
+    font-size: .85rem;
+    text-align: center;
+    transition: background .15s;
+}
+
+.datepicker-month-cell:hover,
+.datepicker-year-cell:hover { background: #e9ecef; }
+
+.datepicker-month-cell.today,
+.datepicker-year-cell.today { background: #e3f2fd; font-weight: bold; color: #1b6ec2; }
+
+.datepicker-month-cell.selected,
+.datepicker-year-cell.selected { background: #1b6ec2; color: white; }
+
 /* ========== Sidebar ========== */
 .sidebar {
     background: linear-gradient(180deg, #1b6ec2 0%, #0d47a1 100%);
