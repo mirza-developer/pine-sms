@@ -50,4 +50,18 @@ public class SmsController : ControllerBase
         if (result == null) return NotFound();
         return Ok(result);
     }
+
+    /// <summary>
+    /// Queries the Melipayamak provider for the current delivery status of the given recIds.
+    /// Pass the recIds stored in SmsLog.RecipientsJson or SmsSendJobPart.ResultJson.
+    /// </summary>
+    [HttpPost("delivery-status")]
+    public async Task<IActionResult> GetDeliveryStatus([FromBody] long[] recIds)
+    {
+        if (recIds == null || recIds.Length == 0)
+            return BadRequest("حداقل یک recId الزامی است");
+
+        var result = await smsService.GetSmsDeliveryStatus(recIds);
+        return Ok(result);
+    }
 }

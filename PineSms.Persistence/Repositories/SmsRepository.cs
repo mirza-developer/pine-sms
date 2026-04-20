@@ -30,7 +30,10 @@ public class SmsRepository : ISmsService
 
         var phoneNumbers = customers.Select(c => "0" + c.PhoneNumber).ToList();
 
-        var recipientResults = await SendToMelipayamak(command.FromNumber, phoneNumbers, command.MessageText);
+        var sendResult = await SendToMelipayamak(command.FromNumber, phoneNumbers, command.MessageText);
+
+        if (!sendResult.Submitted)
+            return new SendSmsResult { Success = false, Message = sendResult.ErrorMessage ?? "خطا در ارسال پیامک" };
 
         var now = DateTime.Now;
         foreach (var customer in customers)
@@ -42,7 +45,7 @@ public class SmsRepository : ISmsService
             SendUserId = userId,
             MessageText = command.MessageText,
             FromNumber = command.FromNumber,
-            RecipientsJson = JsonSerializer.Serialize(recipientResults)
+            RecipientsJson = JsonSerializer.Serialize(sendResult.Recipients)
         };
 
         dbContext.SmsLog.Add(smsLog);
@@ -123,6 +126,52 @@ public class SmsRepository : ISmsService
         return job == null ? null : MapJobToDto(job);
     }
 
+    public async Task<GetDeliveryStatusResult> GetSmsDeliveryStatus(long[] recIds)
+    {
+        try
+        {
+            using var client = httpClientFactory.CreateClient("Melipayamak");
+            var response = await client.PostAsJsonAsync(
+                "api/receive/status/f46fefd347444ded90bda092cde7f6f2",
+                new { recIds });
+
+            var apiJson = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                return new GetDeliveryStatusResult
+                {
+                    Success = false,
+                    ErrorMessage = $"HTTP {(int)response.StatusCode}: {apiJson}"
+                };
+
+            var apiResponse = JsonSerializer.Deserialize<MelipayamakStatusApiResponse>(apiJson);
+            var results = apiResponse?.Results ?? Array.Empty<string>();
+            var codes = apiResponse?.ResultsAsCode ?? Array.Empty<int>();
+
+            var statuses = recIds.Select((id, idx) => new RecIdStatus
+            {
+                RecId = id,
+                Result = idx < results.Length ? results[idx] : string.Empty,
+                ResultCode = idx < codes.Length ? codes[idx] : 0
+            }).ToList();
+
+            return new GetDeliveryStatusResult
+            {
+                Success = true,
+                ProviderStatus = apiResponse?.Status ?? string.Empty,
+                Statuses = statuses
+            };
+        }
+        catch (Exception ex)
+        {
+            return new GetDeliveryStatusResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
     private static SmsSendJobDto MapJobToDto(SmsSendJob job) => new()
     {
         Id = job.Id,
@@ -145,10 +194,14 @@ public class SmsRepository : ISmsService
             .ToList()
     };
 
-    /// <summary>Sends SMS via Melipayamak and returns per-phone result objects.</summary>
-    internal async Task<List<object>> SendToMelipayamak(string fromNumber, List<string> phoneNumbers, string messageText)
+    /// <summary>
+    /// Sends a batch SMS via Melipayamak.
+    /// Returns <see cref="MelipayamakSendResult.Submitted"/> = <c>true</c> when the provider
+    /// accepted the request (HTTP 2xx); each recipient then has a <c>RecId</c> for later
+    /// delivery-status queries. Any HTTP error or exception sets <c>Submitted = false</c>.
+    /// </summary>
+    internal async Task<MelipayamakSendResult> SendToMelipayamak(string fromNumber, List<string> phoneNumbers, string messageText)
     {
-        var recipientResults = new List<object>();
         try
         {
             using var client = httpClientFactory.CreateClient("Melipayamak");
@@ -163,16 +216,40 @@ public class SmsRepository : ISmsService
             var response = await client.PostAsJsonAsync(
                 "api/send/advanced/f46fefd347444ded90bda092cde7f6f2", payload);
 
-            var apiResponse = await response.Content.ReadAsStringAsync();
+            var apiJson = await response.Content.ReadAsStringAsync();
 
-            foreach (var phone in phoneNumbers)
-                recipientResults.Add(new { phone, result = apiResponse, success = response.IsSuccessStatusCode });
+            if (!response.IsSuccessStatusCode)
+                return new MelipayamakSendResult
+                {
+                    Submitted = false,
+                    Recipients = phoneNumbers.Select(p => new SmsRecipientRecord { Phone = p }).ToList(),
+                    ErrorMessage = $"HTTP {(int)response.StatusCode}: {apiJson}"
+                };
+
+            var apiResponse = JsonSerializer.Deserialize<MelipayamakSendApiResponse>(apiJson);
+            var recIds = apiResponse?.RecIds ?? Array.Empty<long>();
+
+            var recipients = phoneNumbers.Select((phone, idx) => new SmsRecipientRecord
+            {
+                Phone = phone,
+                RecId = idx < recIds.Length ? recIds[idx] : null
+            }).ToList();
+
+            return new MelipayamakSendResult
+            {
+                Submitted = true,
+                Recipients = recipients,
+                ProviderStatus = apiResponse?.Status ?? string.Empty
+            };
         }
         catch (Exception ex)
         {
-            foreach (var phone in phoneNumbers)
-                recipientResults.Add(new { phone, result = ex.Message, success = false });
+            return new MelipayamakSendResult
+            {
+                Submitted = false,
+                Recipients = phoneNumbers.Select(p => new SmsRecipientRecord { Phone = p }).ToList(),
+                ErrorMessage = ex.Message
+            };
         }
-        return recipientResults;
     }
 }

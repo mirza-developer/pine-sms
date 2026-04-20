@@ -85,24 +85,36 @@ public class ScheduledSmsWorker : BackgroundService
                 foreach (var customer in customers)
                     customer.LastUsageDate = executedAt;
 
-                part.Status = SmsJobPartStatus.Completed;
-                part.SentCount = phoneNumbers.Count;
                 part.ExecutedAt = executedAt;
-                part.ResultJson = JsonSerializer.Serialize(results);
 
-                var smsLog = new SmsLog
+                if (results.Submitted)
                 {
-                    SendDate = executedAt,
-                    SendUserId = part.Job.UserId,
-                    MessageText = part.Job.MessageText,
-                    FromNumber = part.Job.FromNumber,
-                    RecipientsJson = JsonSerializer.Serialize(results)
-                };
-                db.SmsLog.Add(smsLog);
+                    part.Status = SmsJobPartStatus.Completed;
+                    part.SentCount = phoneNumbers.Count;
+                    part.ResultJson = JsonSerializer.Serialize(results.Recipients);
 
-                logger.LogInformation(
-                    "Job {JobId} part {PartNumber}: sent to {Count} recipients.",
-                    part.JobId, part.PartNumber, phoneNumbers.Count);
+                    var smsLog = new SmsLog
+                    {
+                        SendDate = executedAt,
+                        SendUserId = part.Job.UserId,
+                        MessageText = part.Job.MessageText,
+                        FromNumber = part.Job.FromNumber,
+                        RecipientsJson = JsonSerializer.Serialize(results.Recipients)
+                    };
+                    db.SmsLog.Add(smsLog);
+
+                    logger.LogInformation(
+                        "Job {JobId} part {PartNumber}: submitted to provider for {Count} recipients.",
+                        part.JobId, part.PartNumber, phoneNumbers.Count);
+                }
+                else
+                {
+                    part.Status = SmsJobPartStatus.Failed;
+                    part.ResultJson = JsonSerializer.Serialize(new { error = results.ErrorMessage });
+                    logger.LogWarning(
+                        "Job {JobId} part {PartNumber}: provider rejected submission. Error: {Error}",
+                        part.JobId, part.PartNumber, results.ErrorMessage);
+                }
             }
             catch (Exception ex)
             {

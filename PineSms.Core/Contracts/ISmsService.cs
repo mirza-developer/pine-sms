@@ -9,4 +9,5 @@ public interface ISmsService
     Task<ScheduleSmsResult> ScheduleSms(ScheduleSmsCommand command, string userId);
     Task<List<SmsSendJobDto>> GetSmsJobs(string userId);
     Task<SmsSendJobDto?> GetSmsJob(int jobId, string userId);
+    Task<GetDeliveryStatusResult> GetSmsDeliveryStatus(long[] recIds);
 }
