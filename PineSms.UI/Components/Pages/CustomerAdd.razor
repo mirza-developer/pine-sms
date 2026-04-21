@@ -1,10 +1,4 @@
 @page "/customer/add"
-@using PineSms.UI.Services
-@using PineSms.Core.Features.Customer
-@inject ApiClientService ApiClient
-@inject AuthStateService AuthState
-@inject NavigationManager Navigation
-@inject NotificationService NotificationService
 
 <PageTitle>افزودن مشتری</PageTitle>
 
@@ -74,36 +68,4 @@
     </div>
 </div>
 
-@code {
-    private InsertCustomerCommand command = new();
-    private bool isLoading = false;
-
-    private async Task HandleSubmit()
-    {
-        isLoading = true;
-        try
-        {
-            var (success, message) = await ApiClient.InsertCustomerAsync(command);
-            if (success)
-            {
-                NotificationService.ShowSuccess(message);
-                command = new InsertCustomerCommand();
-            }
-            else
-            {
-                NotificationService.ShowError(message);
-            }
-        }
-        catch
-        {
-            NotificationService.ShowError("خطا در اتصال به سرور");
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private void Reset() => command = new InsertCustomerCommand();
-}
 

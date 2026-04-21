@@ -1,10 +1,4 @@
 @page "/sms/jobs"
-@using PineSms.UI.Services
-@using PineSms.Core.Features.Sms
-@inject ApiClientService ApiClient
-@inject AuthStateService AuthState
-@inject NavigationManager Navigation
-@inject NotificationService NotificationService
 
 <PageTitle>گزارش ارسال‌های زمان‌بندی شده</PageTitle>
 
@@ -100,44 +94,3 @@
     }
 </div>
 
-@code {
-    private List<SmsSendJobDto> jobs = new();
-    private bool isLoading = false;
-
-    protected override async Task OnInitializedAsync() => await LoadJobs();
-
-    private async Task LoadJobs()
-    {
-        isLoading = true;
-        try
-        {
-            var result = await ApiClient.GetSmsJobsAsync();
-            jobs = result ?? new();
-        }
-        catch
-        {
-            NotificationService.ShowError("خطا در بارگذاری گزارشات");
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private static string GetBadgeClass(string status) => status switch
-    {
-        "Completed" => "bg-success",
-        "Sending"   => "bg-warning text-dark",
-        "Failed"    => "bg-danger",
-        _           => "bg-secondary"
-    };
-
-    private static string TranslateStatus(string status) => status switch
-    {
-        "Pending"   => "در انتظار",
-        "Sending"   => "در حال ارسال",
-        "Completed" => "ارسال شد",
-        "Failed"    => "خطا",
-        _           => status
-    };
-}

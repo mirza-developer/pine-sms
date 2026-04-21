@@ -1,9 +1,4 @@
 @inherits LayoutComponentBase
-@using PineSms.UI.Services
-@inject AuthStateService AuthState
-@inject NavigationManager Navigation
-@implements IDisposable
-
 @if (!isAuthInitialized)
 {
     <div class="d-flex justify-content-center align-items-center" style="min-height:100vh;">
@@ -74,52 +69,3 @@ else
 <ReconnectModal />
 <NotificationContainer Position="NotificationPosition.TopRight" />
 
-@code {
-    private bool collapseNavMenu = true;
-    private bool isAuthInitialized = false;
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    protected override void OnInitialized()
-    {
-        Navigation.LocationChanged += OnLocationChanged;
-        AuthState.AuthenticationStateChanged += OnAuthStateChanged;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            try { await AuthState.InitializeAsync(); } catch { }
-            isAuthInitialized = true;
-            StateHasChanged();
-        }
-    }
-
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-    {
-        collapseNavMenu = true;
-        InvokeAsync(StateHasChanged);
-    }
-
-    private void OnAuthStateChanged(Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> task)
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    private string TogglerIconClass => collapseNavMenu ? "bi-list" : "bi-x-lg";
-    private string TogglerTitle    => collapseNavMenu ? "باز کردن منو" : "بستن منو";
-
-    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
-
-    private async Task Logout()
-    {
-        await AuthState.LogoutAsync();
-        Navigation.NavigateTo("/login");
-    }
-
-    public void Dispose()
-    {
-        Navigation.LocationChanged -= OnLocationChanged;
-        AuthState.AuthenticationStateChanged -= OnAuthStateChanged;
-    }
-}

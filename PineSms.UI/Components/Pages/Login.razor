@@ -1,10 +1,4 @@
 @page "/login"
-@using PineSms.UI.Services
-@using PineSms.Core.Features.Account
-@inject ApiClientService ApiClient
-@inject AuthStateService AuthState
-@inject NavigationManager Navigation
-@attribute [AllowAnonymous]
 
 <div class="container d-flex justify-content-center align-items-center" style="min-height:100vh; direction:rtl;">
     <div class="col-11 col-sm-8 col-md-5 col-lg-4">
@@ -39,41 +33,3 @@
     </div>
 </div>
 
-@code {
-    private GetUserLoginQuery loginModel = new();
-    private string errorMessage = string.Empty;
-    private bool isLoading = false;
-
-    protected override void OnInitialized()
-    {
-        if (AuthState.IsAuthenticated)
-            Navigation.NavigateTo("/");
-    }
-
-    private async Task HandleLogin()
-    {
-        isLoading = true;
-        errorMessage = string.Empty;
-        try
-        {
-            var result = await ApiClient.LoginAsync(loginModel);
-            if (result?.Success == true)
-            {
-                await AuthState.SetTokenAsync(result.Token);
-                Navigation.NavigateTo("/");
-            }
-            else
-            {
-                errorMessage = result?.Message ?? "خطا در ورود";
-            }
-        }
-        catch
-        {
-            errorMessage = "خطا در اتصال به سرور";
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-}
