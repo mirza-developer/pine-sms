@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -48,16 +48,74 @@ namespace PineSms.Persistence.Migrations
                 {
                     table.PrimaryKey("PK_SmsLog", x => x.Id);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "SmsSendJob",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FromNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MessageText = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SmsSendJob", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SmsSendJobPart",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    JobId = table.Column<int>(type: "int", nullable: false),
+                    PartNumber = table.Column<int>(type: "int", nullable: false),
+                    ScheduledAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CustomerIdsJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    SentCount = table.Column<int>(type: "int", nullable: false),
+                    ExecutedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ResultJson = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SmsSendJobPart", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SmsSendJobPart_SmsSendJob_JobId",
+                        column: x => x.JobId,
+                        principalTable: "SmsSendJob",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SmsSendJobPart_JobId",
+                table: "SmsSendJobPart",
+                column: "JobId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SmsSendJobPart_Status_ScheduledAt",
+                table: "SmsSendJobPart",
+                columns: new[] { "Status", "ScheduledAt" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Customer");
+                name: "SmsSendJobPart");
+
+            migrationBuilder.DropTable(
+                name: "SmsSendJob");
 
             migrationBuilder.DropTable(
                 name: "SmsLog");
+
+            migrationBuilder.DropTable(
+                name: "Customer");
         }
     }
 }

@@ -40,7 +40,7 @@ public class CustomerRepository : ICustomerService
             Gender = command.Gender,
             BirthYear = command.BirthYear,
             BirthDate = birthDate,
-            SaveDate = DateTime.UtcNow,
+            SaveDate = DateTime.Now,
             SaveUserId = userId,
             SaveType = 1
         };
@@ -93,14 +93,15 @@ public class CustomerRepository : ICustomerService
         }
 
         var toInsert = distinctValid.Except(existingNumbers).ToList();
-        var now = DateTime.UtcNow;
+        
+        DateTime saveDate = FromPersianDate(command.SaveDate) ?? DateTime.Now;
         
         foreach (var phone in toInsert)
         {
             dbContext.Customer.Add(new Customer
             {
                 PhoneNumber = phone,
-                SaveDate = now,
+                SaveDate = saveDate,
                 SaveUserId = userId,
                 SaveType = 2
             });
@@ -111,7 +112,7 @@ public class CustomerRepository : ICustomerService
             .ToListAsync();
         
         foreach (var entity in duplicateEntities)
-            entity.LastUsageDate = now;
+            entity.LastUsageDate = DateTime.Now;
 
         await dbContext.SaveChangesAsync();
         
@@ -135,5 +136,21 @@ public class CustomerRepository : ICustomerService
             && phone.Length == 10 
             && phone.All(char.IsDigit) 
             && phone.StartsWith("9");
+    }
+
+    /// <summary>Converts a Persian date string (yyyy/MM/dd) to UTC DateTime. Returns null on failure.</summary>
+    private static DateTime? FromPersianDate(string? persianDate)
+    {
+        if (string.IsNullOrWhiteSpace(persianDate)) return null;
+        var parts = persianDate.Split('/');
+        if (parts.Length == 3 &&
+            int.TryParse(parts[0], out int y) &&
+            int.TryParse(parts[1], out int m) &&
+            int.TryParse(parts[2], out int d))
+        {
+            try { return new System.Globalization.PersianCalendar().ToDateTime(y, m, d, 0, 0, 0, 0); }
+            catch { return null; }
+        }
+        return null;
     }
 }
