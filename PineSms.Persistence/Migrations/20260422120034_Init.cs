@@ -15,17 +15,18 @@ namespace PineSms.Persistence.Migrations
                 name: "Customer",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PhoneNumber = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
-                    SaveDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    SaveUserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SaveType = table.Column<int>(type: "int", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
-                    Gender = table.Column<int>(type: "int", nullable: true),
-                    BirthYear = table.Column<int>(type: "int", nullable: true),
-                    BirthDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LastUsageDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1")
+                        .Annotation("Sqlite:Autoincrement", true),
+                    PhoneNumber = table.Column<string>(maxLength: 10, nullable: false),
+                    SaveDate = table.Column<DateTime>(nullable: false),
+                    SaveUserId = table.Column<string>(nullable: false),
+                    SaveType = table.Column<int>(nullable: false),
+                    Name = table.Column<string>(maxLength: 128, nullable: true),
+                    Gender = table.Column<int>(nullable: true),
+                    BirthYear = table.Column<int>(nullable: true),
+                    BirthDate = table.Column<DateTime>(nullable: true),
+                    LastUsageDate = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {
@@ -36,13 +37,14 @@ namespace PineSms.Persistence.Migrations
                 name: "SmsLog",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    SendDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    SendUserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    MessageText = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    FromNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RecipientsJson = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1")
+                        .Annotation("Sqlite:Autoincrement", true),
+                    SendDate = table.Column<DateTime>(nullable: false),
+                    SendUserId = table.Column<string>(nullable: false),
+                    MessageText = table.Column<string>(nullable: false),
+                    FromNumber = table.Column<string>(nullable: false),
+                    RecipientsJson = table.Column<string>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -53,12 +55,13 @@ namespace PineSms.Persistence.Migrations
                 name: "SmsSendJob",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    FromNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    MessageText = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1")
+                        .Annotation("Sqlite:Autoincrement", true),
+                    UserId = table.Column<string>(nullable: false),
+                    FromNumber = table.Column<string>(nullable: false),
+                    MessageText = table.Column<string>(nullable: false),
+                    CreatedAt = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {
@@ -69,16 +72,17 @@ namespace PineSms.Persistence.Migrations
                 name: "SmsSendJobPart",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    JobId = table.Column<int>(type: "int", nullable: false),
-                    PartNumber = table.Column<int>(type: "int", nullable: false),
-                    ScheduledAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CustomerIdsJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    SentCount = table.Column<int>(type: "int", nullable: false),
-                    ExecutedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ResultJson = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1")
+                        .Annotation("Sqlite:Autoincrement", true),
+                    JobId = table.Column<int>(nullable: false),
+                    PartNumber = table.Column<int>(nullable: false),
+                    ScheduledAt = table.Column<DateTime>(nullable: false),
+                    CustomerIdsJson = table.Column<string>(nullable: false),
+                    Status = table.Column<int>(nullable: false),
+                    SentCount = table.Column<int>(nullable: false),
+                    ExecutedAt = table.Column<DateTime>(nullable: true),
+                    ResultJson = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {

@@ -2,7 +2,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PineSms.Persistence.Services;
@@ -20,49 +19,36 @@ namespace PineSms.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
-
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+                .HasAnnotation("ProductVersion", "10.0.0");
 
             modelBuilder.Entity("PineSms.Core.Entities.Customer", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", 1)
+                        .HasAnnotation("Sqlite:Autoincrement", true);
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<DateTime?>("BirthDate");
 
-                    b.Property<DateTime?>("BirthDate")
-                        .HasColumnType("datetime2");
+                    b.Property<int?>("BirthYear");
 
-                    b.Property<int?>("BirthYear")
-                        .HasColumnType("int");
+                    b.Property<int?>("Gender");
 
-                    b.Property<int?>("Gender")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("LastUsageDate")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime?>("LastUsageDate");
 
                     b.Property<string>("Name")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                        .HasMaxLength(128);
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(10);
 
-                    b.Property<DateTime>("SaveDate")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime>("SaveDate");
 
-                    b.Property<int>("SaveType")
-                        .HasColumnType("int");
+                    b.Property<int>("SaveType");
 
                     b.Property<string>("SaveUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
                     b.HasKey("Id");
 
@@ -73,28 +59,22 @@ namespace PineSms.Persistence.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", 1)
+                        .HasAnnotation("Sqlite:Autoincrement", true);
 
                     b.Property<string>("FromNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
                     b.Property<string>("MessageText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
                     b.Property<string>("RecipientsJson")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
-                    b.Property<DateTime>("SendDate")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime>("SendDate");
 
                     b.Property<string>("SendUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
                     b.HasKey("Id");
 
@@ -105,24 +85,19 @@ namespace PineSms.Persistence.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", 1)
+                        .HasAnnotation("Sqlite:Autoincrement", true);
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime>("CreatedAt");
 
                     b.Property<string>("FromNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
                     b.Property<string>("MessageText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
                     b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
                     b.HasKey("Id");
 
@@ -133,34 +108,25 @@ namespace PineSms.Persistence.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", 1)
+                        .HasAnnotation("Sqlite:Autoincrement", true);
 
                     b.Property<string>("CustomerIdsJson")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired();
 
-                    b.Property<DateTime?>("ExecutedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime?>("ExecutedAt");
 
-                    b.Property<int>("JobId")
-                        .HasColumnType("int");
+                    b.Property<int>("JobId");
 
-                    b.Property<int>("PartNumber")
-                        .HasColumnType("int");
+                    b.Property<int>("PartNumber");
 
-                    b.Property<string>("ResultJson")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("ResultJson");
 
-                    b.Property<DateTime>("ScheduledAt")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTime>("ScheduledAt");
 
-                    b.Property<int>("SentCount")
-                        .HasColumnType("int");
+                    b.Property<int>("SentCount");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<int>("Status");
 
                     b.HasKey("Id");
 
