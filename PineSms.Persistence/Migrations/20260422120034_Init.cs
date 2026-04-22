@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -106,16 +106,16 @@ namespace PineSms.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "SmsSendJobPart");
-
-            migrationBuilder.DropTable(
-                name: "SmsSendJob");
+                name: "Customer");
 
             migrationBuilder.DropTable(
                 name: "SmsLog");
 
             migrationBuilder.DropTable(
-                name: "Customer");
+                name: "SmsSendJobPart");
+
+            migrationBuilder.DropTable(
+                name: "SmsSendJob");
         }
     }
 }
