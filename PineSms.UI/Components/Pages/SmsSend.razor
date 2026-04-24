@@ -167,9 +167,49 @@
         <!-- RIGHT PANEL: customer list -->
         <div class="col-md-8">
             <div class="card shadow-sm p-3">
+                <!-- Header row -->
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">لیست مشتریان (@customers.Count نفر) | انتخاب شده: @selectedIds.Count</h6>
+                    <h6 class="mb-0">
+                        لیست مشتریان
+                        <span class="badge bg-secondary ms-1">@customers.Count نفر</span>
+                        <span class="badge bg-primary ms-1">@FilteredCustomers.Count() نمایش</span>
+                        <span class="badge bg-success ms-1">@selectedIds.Count انتخاب</span>
+                    </h6>
                 </div>
+
+                <!-- Filter row -->
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-sm-7">
+                        <label class="form-label form-label-sm mb-1 fw-semibold">
+                            <span class="bi bi-search me-1"></span>جستجو در شماره‌ها
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control"
+                                   placeholder="بخشی از شماره موبایل..."
+                                   @bind="phoneFilter"
+                                   @bind:event="oninput" />
+                            @if (!string.IsNullOrEmpty(phoneFilter))
+                            {
+                                <button class="btn btn-outline-secondary" type="button"
+                                        @onclick="() => phoneFilter = string.Empty"
+                                        title="پاک کردن فیلتر">
+                                    <span class="bi bi-x-lg"></span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-sm-5">
+                        <label class="form-label form-label-sm mb-1 fw-semibold">
+                            <span class="bi bi-funnel me-1"></span>نوع مشتری
+                        </label>
+                        <div class="form-check form-switch mt-1">
+                            <input class="form-check-input" type="checkbox" id="testerFilter"
+                                   @bind="showTestersOnly" />
+                            <label class="form-check-label" for="testerFilter">فقط مشتریان آزمایشی</label>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-responsive-wrapper" style="max-height:500px; overflow-y:auto;">
                     <table class="table table-sm table-hover table-bordered">
                         <thead class="table-dark">
@@ -178,7 +218,7 @@
                                     <input type="checkbox"
                                            checked="@allSelected"
                                            @onchange="ToggleAll"
-                                           title="انتخاب/حذف همه" />
+                                           title="انتخاب/حذف همه نمایش‌داده‌شده" />
                                 </th>
                                 <th>شماره موبایل</th>
                                 <th>نام</th>
@@ -188,7 +228,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var c in customers)
+                            @foreach (var c in FilteredCustomers)
                             {
                                 <tr class="@(selectedIds.Contains(c.Id) ? "table-primary" : "")"
                                     style="cursor:pointer;" @onclick="() => ToggleRow(c.Id)">
@@ -207,9 +247,19 @@
                             }
                         </tbody>
                     </table>
-                    @if (customers.Count == 0 && !isLoadingCustomers)
+                    @if (!customers.Any() && !isLoadingCustomers)
                     {
-                        <div class="text-center text-muted py-4">ابتدا بازه زمانی را انتخاب کرده و جستجو کنید</div>
+                        <div class="text-center text-muted py-4">
+                            <span class="bi bi-person-x fs-3 d-block mb-2"></span>
+                            ابتدا بازه زمانی را انتخاب کرده و جستجو کنید
+                        </div>
+                    }
+                    else if (customers.Any() && !FilteredCustomers.Any())
+                    {
+                        <div class="text-center text-muted py-4">
+                            <span class="bi bi-search fs-3 d-block mb-2"></span>
+                            هیچ مشتری با این فیلترها یافت نشد
+                        </div>
                     }
                 </div>
             </div>

@@ -22,6 +22,14 @@ public partial class SmsSend
     private string customToStr = PersianDateHelper.ToPersianDate(DateTime.Today);
     private bool isLoadingCustomers = false;
 
+    // --- client-side filters ---
+    private string phoneFilter = string.Empty;
+    private bool showTestersOnly = false;
+
+    private IEnumerable<Customer> FilteredCustomers => customers
+        .Where(c => (string.IsNullOrEmpty(phoneFilter) || c.PhoneNumber.Contains(phoneFilter))
+                 && (!showTestersOnly || c.IsTester));
+
     // --- SMS settings state ---
     private string fromNumber = string.Empty;
     private string messageText = string.Empty;
@@ -38,7 +46,14 @@ public partial class SmsSend
     private bool isScheduling = false;
     private List<SmsSendJobDto> recentJobs = new();
 
-    private bool allSelected => customers.Count > 0 && selectedIds.Count == customers.Count;
+    private bool allSelected
+    {
+        get
+        {
+            var filtered = FilteredCustomers.ToList();
+            return filtered.Count > 0 && filtered.All(c => selectedIds.Contains(c.Id));
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,8 +130,10 @@ public partial class SmsSend
     private void ToggleAll(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
         bool check = (bool)(e.Value ?? false);
-        if (check) selectedIds = customers.Select(c => c.Id).ToHashSet();
-        else selectedIds.Clear();
+        if (check)
+            foreach (var c in FilteredCustomers) selectedIds.Add(c.Id);
+        else
+            foreach (var c in FilteredCustomers) selectedIds.Remove(c.Id);
     }
 
     // ---- instant send ----
