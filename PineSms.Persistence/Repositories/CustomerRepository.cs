@@ -137,6 +137,33 @@ public class CustomerRepository : ICustomerService
             .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber);
     }
 
+    public async Task<UpdateCustomerResult> UpdateCustomer(UpdateCustomerCommand command)
+    {
+        var customer = await dbContext.Customer.FindAsync(command.Id);
+        if (customer == null)
+            return new UpdateCustomerResult { Success = false, Message = "مشتری یافت نشد" };
+
+        customer.Name = command.Name;
+        customer.Gender = command.Gender;
+        customer.BirthYear = command.BirthYear;
+        customer.IsTester = command.IsTester;
+
+        if (!string.IsNullOrEmpty(command.BirthDate))
+        {
+            var pc = new System.Globalization.PersianCalendar();
+            var parts = command.BirthDate.Split('/');
+            if (parts.Length == 3 && int.TryParse(parts[0], out int y) && int.TryParse(parts[1], out int m) && int.TryParse(parts[2], out int d))
+                customer.BirthDate = pc.ToDateTime(y, m, d, 0, 0, 0, 0);
+        }
+        else
+        {
+            customer.BirthDate = null;
+        }
+
+        await dbContext.SaveChangesAsync();
+        return new UpdateCustomerResult { Success = true, Message = "اطلاعات مشتری با موفقیت به‌روزرسانی شد" };
+    }
+
     private static bool IsValidPhoneNumber(string phone)
     {
         return !string.IsNullOrEmpty(phone) 

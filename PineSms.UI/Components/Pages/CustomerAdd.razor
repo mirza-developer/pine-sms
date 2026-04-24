@@ -1,6 +1,6 @@
 @page "/customer/add"
 
-<PageTitle>افزودن مشتری</PageTitle>
+<PageTitle>@(IsUpdateMode ? "ویرایش مشتری" : "افزودن مشتری")</PageTitle>
 
 @if (!AuthState.IsAuthenticated)
 {
@@ -10,8 +10,10 @@
 
 <div class="container-fluid px-3 px-md-4 mt-4">
     <div class="page-header">
-        <h4>افزودن مشتری جدید</h4>
-        <span class="badge bg-success">فرم ورود دستی</span>
+        <h4>@(IsUpdateMode ? "ویرایش مشتری" : "افزودن مشتری جدید")</h4>
+        <span class="badge @(IsUpdateMode ? "bg-warning text-dark" : "bg-success")">
+            @(IsUpdateMode ? "ویرایش اطلاعات" : "فرم ورود دستی")
+        </span>
     </div>
 
     <div class="card shadow-sm">
@@ -24,9 +26,32 @@
                         <div class="input-group">
                             <span class="input-group-text">0</span>
                             <InputText class="form-control" @bind-Value="command.PhoneNumber" placeholder="9903063085" />
+                            <button type="button" class="btn btn-outline-primary" @onclick="HandleSearch" disabled="@isSearching">
+                                @if (isSearching)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                else
+                                {
+                                    <span class="bi bi-search"></span>
+                                }
+                            </button>
                         </div>
                         <div class="form-text text-muted">۱۰ رقم، شروع با ۹ (بدون صفر ابتدایی)</div>
                         <ValidationMessage For="@(() => command.PhoneNumber)" class="text-danger small" />
+
+                        @if (searchFound == true)
+                        {
+                            <div class="alert alert-success alert-sm py-1 px-2 mt-1 mb-0 small">
+                                <span class="bi bi-check-circle-fill me-1"></span>@searchMessage
+                            </div>
+                        }
+                        else if (searchFound == false)
+                        {
+                            <div class="alert alert-warning alert-sm py-1 px-2 mt-1 mb-0 small">
+                                <span class="bi bi-exclamation-triangle-fill me-1"></span>@searchMessage
+                            </div>
+                        }
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">نام و نام‌خانوادگی</label>
@@ -56,12 +81,19 @@
                     </div>
                     <div class="col-12 mt-3">
                         <div class="btn-group-rtl">
-                            <button type="submit" class="btn btn-success px-4" disabled="@isLoading">
+                            <button type="submit" class="btn @(IsUpdateMode ? "btn-warning" : "btn-success") px-4" disabled="@isLoading">
                                 @if (isLoading)
                                 {
                                     <span class="spinner-border spinner-border-sm me-2"></span>
                                 }
-                                <span class="bi bi-check-circle me-1"></span>ثبت مشتری
+                                @if (IsUpdateMode)
+                                {
+                                    <span class="bi bi-pencil-square me-1"></span><span>ویرایش مشتری</span>
+                                }
+                                else
+                                {
+                                    <span class="bi bi-check-circle me-1"></span><span>ثبت مشتری</span>
+                                }
                             </button>
                             <button type="button" class="btn btn-outline-secondary" @onclick="Reset">
                                 <span class="bi bi-arrow-counterclockwise me-1"></span>پاک کردن
@@ -73,5 +105,4 @@
         </div>
     </div>
 </div>
-
 

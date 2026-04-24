@@ -50,4 +50,15 @@ public class CustomerController : ControllerBase
         if (customer == null) return NotFound(new { message = "مشتری با این شماره یافت نشد" });
         return Ok(customer);
     }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> UpdateCustomer(int id, [FromBody] UpdateCustomerCommand command)
+    {
+        if (command.Id != id)
+            return BadRequest(new { message = "شناسه مشتری مطابقت ندارد" });
+
+        var result = await customerService.UpdateCustomer(command);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
+    }
 }

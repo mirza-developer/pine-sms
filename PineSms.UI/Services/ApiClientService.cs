@@ -72,6 +72,18 @@ public class ApiClientService
         return (null, "خطا در جستجو");
     }
 
+    public async Task<(bool success, string message)> UpdateCustomerAsync(UpdateCustomerCommand command)
+    {
+        var response = await httpClient.PutAsJsonAsync($"api/customer/{command.Id}", command);
+        if (response.IsSuccessStatusCode)
+        {
+            var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
+            return (true, ok?.Message ?? "اطلاعات مشتری به‌روزرسانی شد");
+        }
+        var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (false, error?.Message ?? "خطا در به‌روزرسانی مشتری");
+    }
+
     public async Task<SendSmsResult?> SendSmsAsync(SendSmsCommand command)
     {
         var response = await httpClient.PostAsJsonAsync("api/sms/send", command);
