@@ -42,7 +42,8 @@ public class CustomerRepository : ICustomerService
             BirthDate = birthDate,
             SaveDate = DateTime.Now,
             SaveUserId = userId,
-            SaveType = 1
+            SaveType = 1,
+            IsTester = command.IsTester
         };
 
         dbContext.Customer.Add(customer);

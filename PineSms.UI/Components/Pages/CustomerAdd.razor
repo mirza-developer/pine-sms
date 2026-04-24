@@ -48,6 +48,12 @@
                         <label class="form-label fw-semibold">تاریخ تولد (شمسی)</label>
                         <PersianDatePicker @bind-Value="command.BirthDate" />
                     </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <InputCheckbox class="form-check-input" id="isTesterCheck" @bind-Value="command.IsTester" />
+                            <label class="form-check-label fw-semibold" for="isTesterCheck">مشتری آزمایشی (در هر دسته ارسال پیامک دریافت می‌کند)</label>
+                        </div>
+                    </div>
                     <div class="col-12 mt-3">
                         <div class="btn-group-rtl">
                             <button type="submit" class="btn btn-success px-4" disabled="@isLoading">
