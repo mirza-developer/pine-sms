@@ -59,6 +59,19 @@ public class ApiClientService
             $"api/customer/byrange?from={from:yyyy-MM-ddTHH:mm:ss}&to={to:yyyy-MM-ddTHH:mm:ss}");
     }
 
+    public async Task<(PineSms.Core.Entities.Customer? customer, string? errorMessage)> GetCustomerByPhoneAsync(string phoneNumber)
+    {
+        var response = await httpClient.GetAsync($"api/customer/byphone/{phoneNumber}");
+        if (response.IsSuccessStatusCode)
+        {
+            var customer = await response.Content.ReadFromJsonAsync<PineSms.Core.Entities.Customer>();
+            return (customer, null);
+        }
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return (null, "مشتری با این شماره یافت نشد");
+        return (null, "خطا در جستجو");
+    }
+
     public async Task<SendSmsResult?> SendSmsAsync(SendSmsCommand command)
     {
         var response = await httpClient.PostAsJsonAsync("api/sms/send", command);

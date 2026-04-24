@@ -42,4 +42,12 @@ public class CustomerController : ControllerBase
         var customers = await customerService.GetCustomersByDateRange(from, to);
         return Ok(customers);
     }
+
+    [HttpGet("byphone/{phone}")]
+    public async Task<IActionResult> GetByPhone(string phone)
+    {
+        var customer = await customerService.GetCustomerByPhoneNumber(phone);
+        if (customer == null) return NotFound(new { message = "مشتری با این شماره یافت نشد" });
+        return Ok(customer);
+    }
 }

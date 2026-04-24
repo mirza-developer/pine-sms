@@ -131,6 +131,12 @@ public class CustomerRepository : ICustomerService
             .ToListAsync();
     }
 
+    public async Task<Customer?> GetCustomerByPhoneNumber(string phoneNumber)
+    {
+        return await dbContext.Customer
+            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber);
+    }
+
     private static bool IsValidPhoneNumber(string phone)
     {
         return !string.IsNullOrEmpty(phone) 
