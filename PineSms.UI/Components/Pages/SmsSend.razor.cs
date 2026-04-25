@@ -167,6 +167,31 @@ public partial class SmsSend
             foreach (var c in FilteredCustomers) selectedIds.Remove(c.Id);
     }
 
+    // ---- export ----
+
+    private async Task ExportSelectedToExcel()
+    {
+        var phoneNumbers = customers
+            .Where(c => selectedIds.Contains(c.Id))
+            .Select(c => c.PhoneNumber)
+            .ToList();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var sheet = workbook.Worksheets.Add("شماره‌ها");
+        sheet.Cell(1, 1).Value = "شماره موبایل";
+        for (int i = 0; i < phoneNumbers.Count; i++)
+            sheet.Cell(i + 2, 1).Value = phoneNumbers[i];
+        sheet.Column(1).Width = 20;
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        var base64 = Convert.ToBase64String(stream.ToArray());
+        await JSRuntime.InvokeVoidAsync("downloadFile",
+            $"customers_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            base64);
+    }
+
     // ---- instant send ----
 
     private async Task HandleSendSms()

@@ -213,6 +213,13 @@
                         <span class="badge bg-primary ms-1">@FilteredCustomers.Count() نمایش</span>
                         <span class="badge bg-success ms-1">@selectedIds.Count انتخاب</span>
                     </h6>
+                    <button class="btn btn-outline-success btn-sm"
+                            @onclick="ExportSelectedToExcel"
+                            disabled="@(selectedIds.Count == 0)"
+                            title="دریافت فایل اکسل شماره‌های انتخاب‌شده">
+                        <span class="bi bi-file-earmark-excel me-1"></span>
+                        خروجی اکسل (@selectedIds.Count)
+                    </button>
                 </div>
 
                 <div class="table-responsive-wrapper" style="max-height:500px; overflow-y:auto;">
