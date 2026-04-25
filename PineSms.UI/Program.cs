@@ -30,6 +30,7 @@ builder.Services.AddScoped<ApiClientService>(sp =>
 builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateService>());
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddSingleton<ExcelDownloadTokenStore>();
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -50,6 +51,16 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.MapGet("/download/customers-excel/{token}", (string token, ExcelDownloadTokenStore store) =>
+{
+    var phones = store.Consume(token);
+    if (phones is null) return Results.NotFound();
+    var bytes = XlsxBuilder.BuildPhoneNumbers(phones);
+    var fileName = $"customers_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+    return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
