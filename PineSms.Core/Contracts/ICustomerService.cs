@@ -7,7 +7,7 @@ public interface ICustomerService
 {
     Task<(bool success, string message)> InsertCustomer(InsertCustomerCommand command, string userId);
     Task<ImportCustomersResult> ImportCustomers(ImportCustomersCommand command, string userId);
-    Task<List<Customer>> GetCustomersByDateRange(DateTime from, DateTime to);
+    Task<List<Customer>> GetCustomersByDateRange(DateTime from, DateTime to, string? phonePrefix = null, bool? isTester = null);
     Task<Customer?> GetCustomerByPhoneNumber(string phoneNumber);
     Task<UpdateCustomerResult> UpdateCustomer(UpdateCustomerCommand command);
 }

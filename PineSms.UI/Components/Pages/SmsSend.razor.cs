@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using PineSms.Core.Entities;
 using PineSms.Core.Features.Sms;
 using PineSms.UI.Services;
@@ -11,6 +12,7 @@ public partial class SmsSend
     [Inject] private AuthStateService AuthState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
     [Inject] private NotificationService NotificationService { get; set; } = default!;
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     // --- customer list state ---
     private List<Customer> customers = new();
@@ -31,7 +33,7 @@ public partial class SmsSend
     private bool appliedShowTestersOnly = false;
 
     private IEnumerable<Customer> FilteredCustomers => customers
-        .Where(c => (string.IsNullOrEmpty(appliedPhoneFilter) || c.PhoneNumber.Contains(appliedPhoneFilter))
+        .Where(c => (string.IsNullOrEmpty(appliedPhoneFilter) || c.PhoneNumber.StartsWith(appliedPhoneFilter))
                  && (!appliedShowTestersOnly || c.IsTester));
 
     // --- SMS settings state ---
@@ -62,6 +64,19 @@ public partial class SmsSend
     protected override async Task OnInitializedAsync()
     {
         await LoadRecentJobs();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var saved = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", "smsSend_fromNumber");
+            if (!string.IsNullOrEmpty(saved))
+            {
+                fromNumber = saved;
+                StateHasChanged();
+            }
+        }
     }
 
     // ---- date filter helpers ----
@@ -106,7 +121,10 @@ public partial class SmsSend
         {
             var from = selectedRange == "Custom" ? customFrom : PersianDateHelper.GetDateRangeFrom(selectedRange);
             var to = selectedRange == "Custom" ? customTo : DateTime.Now;
-            var result = await ApiClient.GetCustomersByRangeAsync(from, to);
+            var result = await ApiClient.GetCustomersByRangeAsync(
+                from, to,
+                string.IsNullOrEmpty(appliedPhoneFilter) ? null : appliedPhoneFilter,
+                appliedShowTestersOnly ? true : null);
             customers = result ?? new List<Customer>();
             selectedIds = customers.Select(c => c.Id).ToHashSet();
             if (customers.Count == 0)
@@ -154,6 +172,7 @@ public partial class SmsSend
     private async Task HandleSendSms()
     {
         if (!ValidateForm()) return;
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "smsSend_fromNumber", fromNumber);
         isSending = true;
         try
         {
@@ -191,6 +210,7 @@ public partial class SmsSend
     private async Task HandleScheduleSms()
     {
         if (!ValidateForm()) return;
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "smsSend_fromNumber", fromNumber);
         isScheduling = true;
         try
         {

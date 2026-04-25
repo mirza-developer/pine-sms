@@ -37,9 +37,10 @@ public class CustomerController : ControllerBase
     }
 
     [HttpGet("byrange")]
-    public async Task<IActionResult> GetByRange([FromQuery] DateTime from, [FromQuery] DateTime to)
+    public async Task<IActionResult> GetByRange([FromQuery] DateTime from, [FromQuery] DateTime to,
+        [FromQuery] string? phonePrefix = null, [FromQuery] bool? isTester = null)
     {
-        var customers = await customerService.GetCustomersByDateRange(from, to);
+        var customers = await customerService.GetCustomersByDateRange(from, to, phonePrefix, isTester);
         return Ok(customers);
     }
 

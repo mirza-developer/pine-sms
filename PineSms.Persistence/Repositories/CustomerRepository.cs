@@ -123,10 +123,18 @@ public class CustomerRepository : ICustomerService
         return result;
     }
 
-    public async Task<List<Customer>> GetCustomersByDateRange(DateTime from, DateTime to)
+    public async Task<List<Customer>> GetCustomersByDateRange(DateTime from, DateTime to, string? phonePrefix = null, bool? isTester = null)
     {
-        return await dbContext.Customer
-            .Where(c => c.SaveDate >= from && c.SaveDate <= to)
+        var query = dbContext.Customer
+            .Where(c => c.SaveDate >= from && c.SaveDate <= to);
+
+        if (!string.IsNullOrEmpty(phonePrefix))
+            query = query.Where(c => c.PhoneNumber.StartsWith(phonePrefix));
+
+        if (isTester.HasValue)
+            query = query.Where(c => c.IsTester == isTester.Value);
+
+        return await query
             .OrderBy(c => c.PhoneNumber)
             .ToListAsync();
     }
