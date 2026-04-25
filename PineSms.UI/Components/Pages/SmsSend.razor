@@ -21,41 +21,82 @@
         </div>
     }
 
-    <div class="row g-3">
-        <!-- LEFT PANEL -->
-        <div class="col-md-4">
-            <!-- Date filter -->
-            <div class="card shadow-sm p-3">
-                <h6 class="mb-3">فیلتر بازه زمانی</h6>
-                <div class="mb-2">
-                    <select class="form-select" @bind="selectedRange" @bind:after="OnRangeChanged">
-                        <option value="LastWeek">یک هفته اخیر</option>
-                        <option value="LastTwoWeeks">دو هفته اخیر</option>
-                        <option value="LastMonth">یک ماه اخیر</option>
-                        <option value="LastSeason">یک فصل اخیر</option>
-                        <option value="LastYear">یک سال اخیر</option>
-                        <option value="Custom">سفارشی</option>
-                    </select>
+    <!-- ===== UNIFIED FILTER BAR ===== -->
+    <div class="card shadow-sm p-3 mb-3">
+        <div class="row g-2 align-items-end">
+            <!-- Date range -->
+            <div class="col-lg-3 col-sm-6">
+                <label class="form-label form-label-sm fw-semibold">
+                    <span class="bi bi-calendar-range me-1"></span>بازه زمانی
+                </label>
+                <select class="form-select form-select-sm" @bind="selectedRange" @bind:after="OnRangeChanged">
+                    <option value="LastWeek">یک هفته اخیر</option>
+                    <option value="LastTwoWeeks">دو هفته اخیر</option>
+                    <option value="LastMonth">یک ماه اخیر</option>
+                    <option value="LastSeason">یک فصل اخیر</option>
+                    <option value="LastYear">یک سال اخیر</option>
+                    <option value="Custom">سفارشی</option>
+                </select>
+            </div>
+
+            <!-- Phone filter -->
+            <div class="col-lg-3 col-sm-6">
+                <label class="form-label form-label-sm fw-semibold">
+                    <span class="bi bi-search me-1"></span>جستجو در شماره‌ها
+                </label>
+                <input type="text" class="form-control form-control-sm"
+                       placeholder="بخشی از شماره موبایل..."
+                       @bind="phoneFilter" />
+            </div>
+
+            <!-- Tester filter -->
+            <div class="col-lg-3 col-sm-6 d-flex align-items-center gap-2 pt-4">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="testerFilter"
+                           @bind="showTestersOnly" />
+                    <label class="form-check-label fw-semibold" for="testerFilter">
+                        <span class="bi bi-person-check me-1"></span>فقط مشتریان آزمایشی
+                    </label>
                 </div>
-                @if (selectedRange == "Custom")
-                {
-                    <div class="mb-2">
-                        <label class="form-label">از تاریخ</label>
-                        <PersianDatePicker Value="@customFromStr" ValueChanged="OnCustomFromChanged" />
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">تا تاریخ</label>
-                        <PersianDatePicker Value="@customToStr" ValueChanged="OnCustomToChanged" />
-                    </div>
-                }
-                <button class="btn btn-outline-primary btn-sm" @onclick="LoadCustomers" disabled="@isLoadingCustomers">
-                    @if (isLoadingCustomers) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            </div>
+
+            <!-- Search button -->
+            <div class="col-lg-3 col-sm-6">
+                <button class="btn btn-primary btn-sm w-100" @onclick="ApplyFiltersAndLoad"
+                        disabled="@isLoadingCustomers">
+                    @if (isLoadingCustomers)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    else
+                    {
+                        <span class="bi bi-search me-1"></span>
+                    }
                     جستجوی مشتریان
                 </button>
             </div>
+        </div>
 
-            <!-- SMS settings -->
-            <div class="card shadow-sm p-3 mt-3">
+        <!-- Custom date sub-row -->
+        @if (selectedRange == "Custom")
+        {
+            <div class="row g-2 mt-2 border-top pt-2">
+                <div class="col-sm-6">
+                    <label class="form-label form-label-sm">از تاریخ</label>
+                    <PersianDatePicker Value="@customFromStr" ValueChanged="OnCustomFromChanged" />
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label form-label-sm">تا تاریخ</label>
+                    <PersianDatePicker Value="@customToStr" ValueChanged="OnCustomToChanged" />
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row g-3">
+        <!-- LEFT PANEL: SMS settings -->
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
                 <h6 class="mb-3">تنظیمات پیامک</h6>
                 <div class="mb-2">
                     <label class="form-label">شماره فرستنده</label>
@@ -77,7 +118,6 @@
 
                 @if (!scheduleEnabled)
                 {
-                    <!-- Instant send -->
                     <button class="btn btn-success w-100" @onclick="HandleSendSms"
                             disabled="@(isSending || selectedIds.Count == 0)">
                         @if (isSending) { <span class="spinner-border spinner-border-sm me-1"></span> }
@@ -86,7 +126,6 @@
                 }
                 else
                 {
-                    <!-- Schedule options -->
                     <div class="border rounded p-3 bg-light mb-3">
                         <h6 class="mb-3 text-primary">تنظیمات زمان‌بندی</h6>
 
@@ -167,7 +206,6 @@
         <!-- RIGHT PANEL: customer list -->
         <div class="col-md-8">
             <div class="card shadow-sm p-3">
-                <!-- Header row -->
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">
                         لیست مشتریان
@@ -175,39 +213,6 @@
                         <span class="badge bg-primary ms-1">@FilteredCustomers.Count() نمایش</span>
                         <span class="badge bg-success ms-1">@selectedIds.Count انتخاب</span>
                     </h6>
-                </div>
-
-                <!-- Filter row -->
-                <div class="row g-2 mb-3 align-items-end">
-                    <div class="col-sm-7">
-                        <label class="form-label form-label-sm mb-1 fw-semibold">
-                            <span class="bi bi-search me-1"></span>جستجو در شماره‌ها
-                        </label>
-                        <div class="input-group input-group-sm">
-                            <input type="text" class="form-control"
-                                   placeholder="بخشی از شماره موبایل..."
-                                   @bind="phoneFilter"
-                                   @bind:event="oninput" />
-                            @if (!string.IsNullOrEmpty(phoneFilter))
-                            {
-                                <button class="btn btn-outline-secondary" type="button"
-                                        @onclick="() => phoneFilter = string.Empty"
-                                        title="پاک کردن فیلتر">
-                                    <span class="bi bi-x-lg"></span>
-                                </button>
-                            }
-                        </div>
-                    </div>
-                    <div class="col-sm-5">
-                        <label class="form-label form-label-sm mb-1 fw-semibold">
-                            <span class="bi bi-funnel me-1"></span>نوع مشتری
-                        </label>
-                        <div class="form-check form-switch mt-1">
-                            <input class="form-check-input" type="checkbox" id="testerFilter"
-                                   @bind="showTestersOnly" />
-                            <label class="form-check-label" for="testerFilter">فقط مشتریان آزمایشی</label>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="table-responsive-wrapper" style="max-height:500px; overflow-y:auto;">
@@ -251,7 +256,7 @@
                     {
                         <div class="text-center text-muted py-4">
                             <span class="bi bi-person-x fs-3 d-block mb-2"></span>
-                            ابتدا بازه زمانی را انتخاب کرده و جستجو کنید
+                            فیلترها را تنظیم کرده و دکمه جستجو را بزنید
                         </div>
                     }
                     else if (customers.Any() && !FilteredCustomers.Any())

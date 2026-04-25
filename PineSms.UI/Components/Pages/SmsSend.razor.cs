@@ -22,13 +22,17 @@ public partial class SmsSend
     private string customToStr = PersianDateHelper.ToPersianDate(DateTime.Today);
     private bool isLoadingCustomers = false;
 
-    // --- client-side filters ---
+    // --- client-side filters (pending — bound to UI inputs) ---
     private string phoneFilter = string.Empty;
     private bool showTestersOnly = false;
 
+    // --- applied filters (what FilteredCustomers actually uses) ---
+    private string appliedPhoneFilter = string.Empty;
+    private bool appliedShowTestersOnly = false;
+
     private IEnumerable<Customer> FilteredCustomers => customers
-        .Where(c => (string.IsNullOrEmpty(phoneFilter) || c.PhoneNumber.Contains(phoneFilter))
-                 && (!showTestersOnly || c.IsTester));
+        .Where(c => (string.IsNullOrEmpty(appliedPhoneFilter) || c.PhoneNumber.Contains(appliedPhoneFilter))
+                 && (!appliedShowTestersOnly || c.IsTester));
 
     // --- SMS settings state ---
     private string fromNumber = string.Empty;
@@ -81,6 +85,15 @@ public partial class SmsSend
             customFrom = PersianDateHelper.GetDateRangeFrom(selectedRange);
             customTo = DateTime.Now;
         }
+    }
+
+    // ---- unified filter + load ----
+
+    private async Task ApplyFiltersAndLoad()
+    {
+        appliedPhoneFilter = phoneFilter;
+        appliedShowTestersOnly = showTestersOnly;
+        await LoadCustomers();
     }
 
     // ---- customer loading ----
