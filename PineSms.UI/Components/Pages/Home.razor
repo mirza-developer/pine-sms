@@ -1,13 +1,4 @@
 @page "/"
-@using PineSms.UI.Services
-@inject AuthStateService AuthState
-@inject NavigationManager Navigation
-
-@if (!AuthState.IsAuthenticated)
-{
-    Navigation.NavigateTo("/login");
-    return;
-}
 
 <div class="container-fluid px-3 px-md-4 mt-4">
     <div class="mb-4">

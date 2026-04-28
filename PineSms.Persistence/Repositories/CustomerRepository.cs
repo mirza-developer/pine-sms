@@ -42,7 +42,8 @@ public class CustomerRepository : ICustomerService
             BirthDate = birthDate,
             SaveDate = DateTime.Now,
             SaveUserId = userId,
-            SaveType = 1
+            SaveType = 1,
+            IsTester = command.IsTester
         };
 
         dbContext.Customer.Add(customer);
@@ -122,12 +123,53 @@ public class CustomerRepository : ICustomerService
         return result;
     }
 
-    public async Task<List<Customer>> GetCustomersByDateRange(DateTime from, DateTime to)
+    public async Task<List<Customer>> GetCustomersByDateRange(DateTime from, DateTime to, string? phonePrefix = null, bool? isTester = null)
     {
-        return await dbContext.Customer
-            .Where(c => c.SaveDate >= from && c.SaveDate <= to)
+        var query = dbContext.Customer
+            .Where(c => c.SaveDate >= from && c.SaveDate <= to);
+
+        if (!string.IsNullOrEmpty(phonePrefix))
+            query = query.Where(c => c.PhoneNumber.StartsWith(phonePrefix));
+
+        if (isTester.HasValue)
+            query = query.Where(c => c.IsTester == isTester.Value);
+
+        return await query
             .OrderBy(c => c.PhoneNumber)
             .ToListAsync();
+    }
+
+    public async Task<Customer?> GetCustomerByPhoneNumber(string phoneNumber)
+    {
+        return await dbContext.Customer
+            .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber);
+    }
+
+    public async Task<UpdateCustomerResult> UpdateCustomer(UpdateCustomerCommand command)
+    {
+        var customer = await dbContext.Customer.FindAsync(command.Id);
+        if (customer == null)
+            return new UpdateCustomerResult { Success = false, Message = "مشتری یافت نشد" };
+
+        customer.Name = command.Name;
+        customer.Gender = command.Gender;
+        customer.BirthYear = command.BirthYear;
+        customer.IsTester = command.IsTester;
+
+        if (!string.IsNullOrEmpty(command.BirthDate))
+        {
+            var pc = new System.Globalization.PersianCalendar();
+            var parts = command.BirthDate.Split('/');
+            if (parts.Length == 3 && int.TryParse(parts[0], out int y) && int.TryParse(parts[1], out int m) && int.TryParse(parts[2], out int d))
+                customer.BirthDate = pc.ToDateTime(y, m, d, 0, 0, 0, 0);
+        }
+        else
+        {
+            customer.BirthDate = null;
+        }
+
+        await dbContext.SaveChangesAsync();
+        return new UpdateCustomerResult { Success = true, Message = "اطلاعات مشتری با موفقیت به‌روزرسانی شد" };
     }
 
     private static bool IsValidPhoneNumber(string phone)

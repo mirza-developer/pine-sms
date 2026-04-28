@@ -12,7 +12,7 @@ using PineSms.Identity.Services;
 namespace PineSms.Identity.Migrations
 {
     [DbContext(typeof(PineSmsIdentityContext))]
-    [Migration("20260417205701_Init")]
+    [Migration("20260422133152_Init")]
     partial class Init
     {
         /// <inheritdoc />

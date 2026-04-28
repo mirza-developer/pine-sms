@@ -53,10 +53,39 @@ public class ApiClientService
         return await response.Content.ReadFromJsonAsync<ImportCustomersResult>();
     }
 
-    public async Task<List<PineSms.Core.Entities.Customer>?> GetCustomersByRangeAsync(DateTime from, DateTime to)
+    public async Task<List<PineSms.Core.Entities.Customer>?> GetCustomersByRangeAsync(DateTime from, DateTime to, string? phonePrefix = null, bool? isTester = null)
     {
-        return await httpClient.GetFromJsonAsync<List<PineSms.Core.Entities.Customer>>(
-            $"api/customer/byrange?from={from:yyyy-MM-ddTHH:mm:ss}&to={to:yyyy-MM-ddTHH:mm:ss}");
+        var url = $"api/customer/byrange?from={from:yyyy-MM-ddTHH:mm:ss}&to={to:yyyy-MM-ddTHH:mm:ss}";
+        if (!string.IsNullOrEmpty(phonePrefix))
+            url += $"&phonePrefix={Uri.EscapeDataString(phonePrefix)}";
+        if (isTester.HasValue)
+            url += $"&isTester={isTester.Value.ToString().ToLowerInvariant()}";
+        return await httpClient.GetFromJsonAsync<List<PineSms.Core.Entities.Customer>>(url);
+    }
+
+    public async Task<(PineSms.Core.Entities.Customer? customer, string? errorMessage)> GetCustomerByPhoneAsync(string phoneNumber)
+    {
+        var response = await httpClient.GetAsync($"api/customer/byphone/{phoneNumber}");
+        if (response.IsSuccessStatusCode)
+        {
+            var customer = await response.Content.ReadFromJsonAsync<PineSms.Core.Entities.Customer>();
+            return (customer, null);
+        }
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return (null, "مشتری با این شماره یافت نشد");
+        return (null, "خطا در جستجو");
+    }
+
+    public async Task<(bool success, string message)> UpdateCustomerAsync(UpdateCustomerCommand command)
+    {
+        var response = await httpClient.PutAsJsonAsync($"api/customer/{command.Id}", command);
+        if (response.IsSuccessStatusCode)
+        {
+            var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
+            return (true, ok?.Message ?? "اطلاعات مشتری به‌روزرسانی شد");
+        }
+        var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (false, error?.Message ?? "خطا در به‌روزرسانی مشتری");
     }
 
     public async Task<SendSmsResult?> SendSmsAsync(SendSmsCommand command)

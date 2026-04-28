@@ -1,11 +1,4 @@
 @page "/sms/send"
-@using PineSms.UI.Services
-@using PineSms.Core.Features.Sms
-@using PineSms.Core.Entities
-@inject ApiClientService ApiClient
-@inject AuthStateService AuthState
-@inject NavigationManager Navigation
-@inject NotificationService NotificationService
 
 <PageTitle>ارسال پیامک</PageTitle>
 
@@ -28,41 +21,82 @@
         </div>
     }
 
-    <div class="row g-3">
-        <!-- LEFT PANEL -->
-        <div class="col-md-4">
-            <!-- Date filter -->
-            <div class="card shadow-sm p-3">
-                <h6 class="mb-3">فیلتر بازه زمانی</h6>
-                <div class="mb-2">
-                    <select class="form-select" @bind="selectedRange" @bind:after="OnRangeChanged">
-                        <option value="LastWeek">یک هفته اخیر</option>
-                        <option value="LastTwoWeeks">دو هفته اخیر</option>
-                        <option value="LastMonth">یک ماه اخیر</option>
-                        <option value="LastSeason">یک فصل اخیر</option>
-                        <option value="LastYear">یک سال اخیر</option>
-                        <option value="Custom">سفارشی</option>
-                    </select>
+    <!-- ===== UNIFIED FILTER BAR ===== -->
+    <div class="card shadow-sm p-3 mb-3">
+        <div class="row g-2 align-items-end">
+            <!-- Date range -->
+            <div class="col-lg-3 col-sm-6">
+                <label class="form-label form-label-sm fw-semibold">
+                    <span class="bi bi-calendar-range me-1"></span>بازه زمانی
+                </label>
+                <select class="form-select form-select-sm" @bind="selectedRange" @bind:after="OnRangeChanged">
+                    <option value="LastWeek">یک هفته اخیر</option>
+                    <option value="LastTwoWeeks">دو هفته اخیر</option>
+                    <option value="LastMonth">یک ماه اخیر</option>
+                    <option value="LastSeason">یک فصل اخیر</option>
+                    <option value="LastYear">یک سال اخیر</option>
+                    <option value="Custom">سفارشی</option>
+                </select>
+            </div>
+
+            <!-- Phone filter -->
+            <div class="col-lg-3 col-sm-6">
+                <label class="form-label form-label-sm fw-semibold">
+                    <span class="bi bi-search me-1"></span>جستجو در شماره‌ها
+                </label>
+                <input type="text" class="form-control form-control-sm"
+                       placeholder="ابتدای شماره موبایل..."
+                       @bind="phoneFilter" />
+            </div>
+
+            <!-- Tester filter -->
+            <div class="col-lg-3 col-sm-6 d-flex align-items-center gap-2 pt-4">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="testerFilter"
+                           @bind="showTestersOnly" />
+                    <label class="form-check-label fw-semibold" for="testerFilter">
+                        <span class="bi bi-person-check me-1"></span>فقط مشتریان آزمایشی
+                    </label>
                 </div>
-                @if (selectedRange == "Custom")
-                {
-                    <div class="mb-2">
-                        <label class="form-label">از تاریخ</label>
-                        <PersianDatePicker Value="@customFromStr" ValueChanged="OnCustomFromChanged" />
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">تا تاریخ</label>
-                        <PersianDatePicker Value="@customToStr" ValueChanged="OnCustomToChanged" />
-                    </div>
-                }
-                <button class="btn btn-outline-primary btn-sm" @onclick="LoadCustomers" disabled="@isLoadingCustomers">
-                    @if (isLoadingCustomers) { <span class="spinner-border spinner-border-sm me-1"></span> }
+            </div>
+
+            <!-- Search button -->
+            <div class="col-lg-3 col-sm-6">
+                <button class="btn btn-primary btn-sm w-100" @onclick="ApplyFiltersAndLoad"
+                        disabled="@isLoadingCustomers">
+                    @if (isLoadingCustomers)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    else
+                    {
+                        <span class="bi bi-search me-1"></span>
+                    }
                     جستجوی مشتریان
                 </button>
             </div>
+        </div>
 
-            <!-- SMS settings -->
-            <div class="card shadow-sm p-3 mt-3">
+        <!-- Custom date sub-row -->
+        @if (selectedRange == "Custom")
+        {
+            <div class="row g-2 mt-2 border-top pt-2">
+                <div class="col-sm-6">
+                    <label class="form-label form-label-sm">از تاریخ</label>
+                    <PersianDatePicker Value="@customFromStr" ValueChanged="OnCustomFromChanged" />
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label form-label-sm">تا تاریخ</label>
+                    <PersianDatePicker Value="@customToStr" ValueChanged="OnCustomToChanged" />
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="row g-3">
+        <!-- LEFT PANEL: SMS settings -->
+        <div class="col-md-4">
+            <div class="card shadow-sm p-3">
                 <h6 class="mb-3">تنظیمات پیامک</h6>
                 <div class="mb-2">
                     <label class="form-label">شماره فرستنده</label>
@@ -84,7 +118,6 @@
 
                 @if (!scheduleEnabled)
                 {
-                    <!-- Instant send -->
                     <button class="btn btn-success w-100" @onclick="HandleSendSms"
                             disabled="@(isSending || selectedIds.Count == 0)">
                         @if (isSending) { <span class="spinner-border spinner-border-sm me-1"></span> }
@@ -93,7 +126,6 @@
                 }
                 else
                 {
-                    <!-- Schedule options -->
                     <div class="border rounded p-3 bg-light mb-3">
                         <h6 class="mb-3 text-primary">تنظیمات زمان‌بندی</h6>
 
@@ -175,8 +207,21 @@
         <div class="col-md-8">
             <div class="card shadow-sm p-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">لیست مشتریان (@customers.Count نفر) | انتخاب شده: @selectedIds.Count</h6>
+                    <h6 class="mb-0">
+                        لیست مشتریان
+                        <span class="badge bg-secondary ms-1">@customers.Count نفر</span>
+                        <span class="badge bg-primary ms-1">@FilteredCustomers.Count() نمایش</span>
+                        <span class="badge bg-success ms-1">@selectedIds.Count انتخاب</span>
+                    </h6>
+                    <button class="btn btn-outline-success btn-sm"
+                            @onclick="ExportSelectedToExcel"
+                            disabled="@(selectedIds.Count == 0)"
+                            title="دریافت فایل اکسل شماره‌های انتخاب‌شده">
+                        <span class="bi bi-file-earmark-excel me-1"></span>
+                        خروجی اکسل (@selectedIds.Count)
+                    </button>
                 </div>
+
                 <div class="table-responsive-wrapper" style="max-height:500px; overflow-y:auto;">
                     <table class="table table-sm table-hover table-bordered">
                         <thead class="table-dark">
@@ -185,7 +230,7 @@
                                     <input type="checkbox"
                                            checked="@allSelected"
                                            @onchange="ToggleAll"
-                                           title="انتخاب/حذف همه" />
+                                           title="انتخاب/حذف همه نمایش‌داده‌شده" />
                                 </th>
                                 <th>شماره موبایل</th>
                                 <th>نام</th>
@@ -195,7 +240,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var c in customers)
+                            @foreach (var c in FilteredCustomers)
                             {
                                 <tr class="@(selectedIds.Contains(c.Id) ? "table-primary" : "")"
                                     style="cursor:pointer;" @onclick="() => ToggleRow(c.Id)">
@@ -214,9 +259,19 @@
                             }
                         </tbody>
                     </table>
-                    @if (customers.Count == 0 && !isLoadingCustomers)
+                    @if (!customers.Any() && !isLoadingCustomers)
                     {
-                        <div class="text-center text-muted py-4">ابتدا بازه زمانی را انتخاب کرده و جستجو کنید</div>
+                        <div class="text-center text-muted py-4">
+                            <span class="bi bi-person-x fs-3 d-block mb-2"></span>
+                            فیلترها را تنظیم کرده و دکمه جستجو را بزنید
+                        </div>
+                    }
+                    else if (customers.Any() && !FilteredCustomers.Any())
+                    {
+                        <div class="text-center text-muted py-4">
+                            <span class="bi bi-search fs-3 d-block mb-2"></span>
+                            هیچ مشتری با این فیلترها یافت نشد
+                        </div>
                     }
                 </div>
             </div>
@@ -224,246 +279,3 @@
     </div>
 </div>
 
-@code {
-    // --- customer list state ---
-    private List<Customer> customers = new();
-    private HashSet<int> selectedIds = new();
-    private string selectedRange = "LastMonth";
-    private DateTime customFrom = DateTime.Today.AddMonths(-1);
-    private DateTime customTo = DateTime.Today;
-    private string customFromStr = PersianDateHelper.ToPersianDate(DateTime.Today.AddMonths(-1));
-    private string customToStr = PersianDateHelper.ToPersianDate(DateTime.Today);
-    private bool isLoadingCustomers = false;
-
-    // --- SMS settings state ---
-    private string fromNumber = string.Empty;
-    private string messageText = string.Empty;
-    private string alertMessage = string.Empty;
-    private string alertClass = "alert-info";
-    private bool isSending = false;
-
-    // --- scheduling state ---
-    private bool scheduleEnabled = false;
-    private int numberOfParts = 2;
-    private int delayMinutes = 60;
-    private string? firstSendDateStr;
-    private TimeOnly firstSendTime = TimeOnly.FromDateTime(DateTime.Now);
-    private bool isScheduling = false;
-    private List<SmsSendJobDto> recentJobs = new();
-
-    private bool allSelected => customers.Count > 0 && selectedIds.Count == customers.Count;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadRecentJobs();
-    }
-
-    // ---- date filter helpers ----
-
-    private void OnCustomFromChanged(string? val)
-    {
-        customFromStr = val ?? string.Empty;
-        customFrom = PersianDateHelper.FromPersianDate(val) ?? DateTime.Today.AddMonths(-1);
-    }
-
-    private void OnCustomToChanged(string? val)
-    {
-        customToStr = val ?? string.Empty;
-        customTo = PersianDateHelper.FromPersianDate(val) ?? DateTime.Today;
-    }
-
-    private void OnRangeChanged()
-    {
-        if (selectedRange != "Custom")
-        {
-            customFrom = PersianDateHelper.GetDateRangeFrom(selectedRange);
-            customTo = DateTime.Now;
-        }
-    }
-
-    // ---- customer loading ----
-
-    private async Task LoadCustomers()
-    {
-        isLoadingCustomers = true;
-        selectedIds.Clear();
-        try
-        {
-            var from = selectedRange == "Custom" ? customFrom : PersianDateHelper.GetDateRangeFrom(selectedRange);
-            var to = selectedRange == "Custom" ? customTo : DateTime.Now;
-            var result = await ApiClient.GetCustomersByRangeAsync(from, to);
-            customers = result ?? new List<Customer>();
-            selectedIds = customers.Select(c => c.Id).ToHashSet();
-            if (customers.Count == 0)
-                NotificationService.ShowInformation("هیچ مشتری در این بازه زمانی یافت نشد");
-            else
-                NotificationService.ShowSuccess($"{customers.Count} مشتری یافت شد");
-        }
-        catch
-        {
-            NotificationService.ShowError("خطا در بارگذاری مشتریان");
-            alertClass = "alert-danger";
-            alertMessage = "خطا در بارگذاری مشتریان";
-        }
-        finally
-        {
-            isLoadingCustomers = false;
-        }
-    }
-
-    // ---- selection helpers ----
-
-    private void ToggleSelection(int id, bool selected)
-    {
-        if (selected) selectedIds.Add(id);
-        else selectedIds.Remove(id);
-    }
-
-    private void ToggleRow(int id)
-    {
-        if (selectedIds.Contains(id)) selectedIds.Remove(id);
-        else selectedIds.Add(id);
-    }
-
-    private void ToggleAll(ChangeEventArgs e)
-    {
-        bool check = (bool)(e.Value ?? false);
-        if (check) selectedIds = customers.Select(c => c.Id).ToHashSet();
-        else selectedIds.Clear();
-    }
-
-    // ---- instant send ----
-
-    private async Task HandleSendSms()
-    {
-        if (!ValidateForm()) return;
-        isSending = true;
-        try
-        {
-            var command = new SendSmsCommand
-            {
-                CustomerIds = selectedIds.ToList(),
-                MessageText = messageText,
-                FromNumber = fromNumber,
-                DateRangeType = selectedRange,
-                CustomFrom = selectedRange == "Custom" ? customFrom : null,
-                CustomTo = selectedRange == "Custom" ? customTo : null
-            };
-            var result = await ApiClient.SendSmsAsync(command);
-            if (result?.Success == true)
-                NotificationService.ShowSuccess(result.Message);
-            else
-                NotificationService.ShowError(result?.Message ?? "خطا در ارسال");
-            alertClass = result?.Success == true ? "alert-success" : "alert-danger";
-            alertMessage = result?.Message ?? "خطا در ارسال";
-        }
-        catch
-        {
-            NotificationService.ShowError("خطا در اتصال به سرور");
-            alertClass = "alert-danger";
-            alertMessage = "خطا در اتصال به سرور";
-        }
-        finally
-        {
-            isSending = false;
-        }
-    }
-
-    // ---- scheduled send ----
-
-    private async Task HandleScheduleSms()
-    {
-        if (!ValidateForm()) return;
-        isScheduling = true;
-        try
-        {
-            DateTime? firstSendAt = null;
-            if (!string.IsNullOrEmpty(firstSendDateStr))
-            {
-                var date = PersianDateHelper.FromPersianDate(firstSendDateStr);
-                if (date.HasValue)
-                    firstSendAt = date.Value.Date.Add(firstSendTime.ToTimeSpan());
-            }
-
-            var command = new ScheduleSmsCommand
-            {
-                CustomerIds = selectedIds.ToList(),
-                MessageText = messageText,
-                FromNumber = fromNumber,
-                NumberOfParts = numberOfParts,
-                DelayMinutesBetweenParts = delayMinutes,
-                FirstSendAt = firstSendAt
-            };
-            var result = await ApiClient.ScheduleSmsAsync(command);
-            if (result?.Success == true)
-            {
-                NotificationService.ShowSuccess(result.Message);
-                alertClass = "alert-success";
-                alertMessage = result.Message;
-                await LoadRecentJobs();
-            }
-            else
-            {
-                NotificationService.ShowError(result?.Message ?? "خطا در زمان‌بندی");
-                alertClass = "alert-danger";
-                alertMessage = result?.Message ?? "خطا در زمان‌بندی";
-            }
-        }
-        catch
-        {
-            NotificationService.ShowError("خطا در اتصال به سرور");
-            alertClass = "alert-danger";
-            alertMessage = "خطا در اتصال به سرور";
-        }
-        finally
-        {
-            isScheduling = false;
-        }
-    }
-
-    private async Task LoadRecentJobs()
-    {
-        try
-        {
-            var jobs = await ApiClient.GetSmsJobsAsync();
-            recentJobs = jobs?.Take(5).ToList() ?? new();
-        }
-        catch { /* silently ignore */ }
-    }
-
-    private bool ValidateForm()
-    {
-        if (string.IsNullOrEmpty(messageText))
-        {
-            alertClass = "alert-warning";
-            alertMessage = "لطفاً متن پیامک را وارد کنید";
-            return false;
-        }
-        if (string.IsNullOrEmpty(fromNumber))
-        {
-            alertClass = "alert-warning";
-            alertMessage = "لطفاً شماره فرستنده را وارد کنید";
-            return false;
-        }
-        return true;
-    }
-
-    // ---- job badge helpers ----
-
-    private static string GetPartBadgeClass(string status) => status switch
-    {
-        "Completed" => "bg-success",
-        "Sending"   => "bg-warning text-dark",
-        "Failed"    => "bg-danger",
-        _           => "bg-secondary"
-    };
-
-    private static string TranslateStatus(string status) => status switch
-    {
-        "Pending"   => "در انتظار",
-        "Sending"   => "در حال ارسال",
-        "Completed" => "ارسال شد",
-        "Failed"    => "خطا",
-        _           => status
-    };
-}

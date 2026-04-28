@@ -37,9 +37,29 @@ public class CustomerController : ControllerBase
     }
 
     [HttpGet("byrange")]
-    public async Task<IActionResult> GetByRange([FromQuery] DateTime from, [FromQuery] DateTime to)
+    public async Task<IActionResult> GetByRange([FromQuery] DateTime from, [FromQuery] DateTime to,
+        [FromQuery] string? phonePrefix = null, [FromQuery] bool? isTester = null)
     {
-        var customers = await customerService.GetCustomersByDateRange(from, to);
+        var customers = await customerService.GetCustomersByDateRange(from, to, phonePrefix, isTester);
         return Ok(customers);
+    }
+
+    [HttpGet("byphone/{phone}")]
+    public async Task<IActionResult> GetByPhone(string phone)
+    {
+        var customer = await customerService.GetCustomerByPhoneNumber(phone);
+        if (customer == null) return NotFound(new { message = "مشتری با این شماره یافت نشد" });
+        return Ok(customer);
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> UpdateCustomer(int id, [FromBody] UpdateCustomerCommand command)
+    {
+        if (command.Id != id)
+            return BadRequest(new { message = "شناسه مشتری مطابقت ندارد" });
+
+        var result = await customerService.UpdateCustomer(command);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 }

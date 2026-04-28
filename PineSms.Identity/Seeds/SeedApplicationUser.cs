@@ -20,6 +20,7 @@ public static class SeedData
                 NormalizedUserName = "ADMIN",
                 PersianName = "مدیر سیستم",
                 PasswordHash = CryptographyTools.GetHashedStringSha256StringBuilder("Admin@123"),
+                ConcurrencyStamp = "be993071-73a8-4aa6-aecd-614a40aad3ec",
                 AccessFailedCount = 0,
                 LockoutEnabled = false,
                 TwoFactorEnabled = false,

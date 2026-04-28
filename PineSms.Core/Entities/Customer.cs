@@ -28,4 +28,7 @@ public class Customer : IBaseEntity
     public DateTime? BirthDate { get; set; }
 
     public DateTime? LastUsageDate { get; set; }
+
+    /// <summary>True when this customer should receive SMS in every sending chunk, even if not explicitly selected.</summary>
+    public bool IsTester { get; set; } = false;
 }

@@ -21,8 +21,16 @@ public class SmsRepository : ISmsService
 
     public async Task<SendSmsResult> SendSms(SendSmsCommand command, string userId)
     {
+        // Always include tester customers, deduped with the selected ones
+        var testerIds = await dbContext.Customer
+            .Where(c => c.IsTester)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        var allIds = command.CustomerIds.Union(testerIds).ToList();
+
         var customers = await dbContext.Customer
-            .Where(c => command.CustomerIds.Contains(c.Id))
+            .Where(c => allIds.Contains(c.Id))
             .ToListAsync();
 
         if (customers.Count == 0)
@@ -64,6 +72,12 @@ public class SmsRepository : ISmsService
         if (command.CustomerIds.Count == 0)
             return new ScheduleSmsResult { Success = false, Message = "مشتری انتخاب نشده است" };
 
+        // Fetch tester customer IDs – they will be appended to every chunk
+        var testerIds = await dbContext.Customer
+            .Where(c => c.IsTester)
+            .Select(c => c.Id)
+            .ToListAsync();
+
         int parts = Math.Max(1, command.NumberOfParts);
         var allIds = command.CustomerIds.ToList();
         int chunkSize = (int)Math.Ceiling(allIds.Count / (double)parts);
@@ -85,12 +99,15 @@ public class SmsRepository : ISmsService
             var chunk = allIds.Skip(i * chunkSize).Take(chunkSize).ToList();
             if (chunk.Count == 0) break;
 
+            // Merge tester IDs into every chunk (deduped)
+            var chunkWithTesters = chunk.Union(testerIds).ToList();
+
             var part = new SmsSendJobPart
             {
                 JobId = job.Id,
                 PartNumber = i + 1,
                 ScheduledAt = firstSendAt.AddMinutes(i * command.DelayMinutesBetweenParts),
-                CustomerIdsJson = JsonSerializer.Serialize(chunk),
+                CustomerIdsJson = JsonSerializer.Serialize(chunkWithTesters),
                 Status = SmsJobPartStatus.Pending
             };
             dbContext.SmsSendJobPart.Add(part);
@@ -202,6 +219,11 @@ public class SmsRepository : ISmsService
     /// </summary>
     internal async Task<MelipayamakSendResult> SendToMelipayamak(string fromNumber, List<string> phoneNumbers, string messageText)
     {
+        List<string> errorStrings = new()
+        {
+            "محدودیت در حجم ارسال"
+        };
+
         try
         {
             using var client = httpClientFactory.CreateClient("Melipayamak");
@@ -218,7 +240,8 @@ public class SmsRepository : ISmsService
 
             var apiJson = await response.Content.ReadAsStringAsync();
 
-            if (!response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode
+                || errorStrings.Any(a=> apiJson.Contains(a)))
                 return new MelipayamakSendResult
                 {
                     Submitted = false,
@@ -251,5 +274,7 @@ public class SmsRepository : ISmsService
                 ErrorMessage = ex.Message
             };
         }
+
+       
     }
 }
