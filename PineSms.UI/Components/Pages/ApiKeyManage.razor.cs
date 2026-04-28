@@ -19,6 +19,7 @@ public partial class ApiKeyManage
     private bool isSaving = false;
     private bool showModal = false;
     private CreateApiKeyCommand createCommand = new() { ExpireAt = DateTime.Now.AddYears(1) };
+    private string? expireAtPersian;
     private ApiKey? deleteTarget = null;
     private string newlyCreatedKey = string.Empty;
 
@@ -45,6 +46,7 @@ public partial class ApiKeyManage
     private void OpenAddModal()
     {
         createCommand = new CreateApiKeyCommand { ExpireAt = DateTime.Now.AddYears(1) };
+        expireAtPersian = PersianDateHelper.ToPersianDate(createCommand.ExpireAt);
         newlyCreatedKey = string.Empty;
         showModal = true;
     }
@@ -57,6 +59,13 @@ public partial class ApiKeyManage
 
     private async Task HandleCreate()
     {
+        var parsedDate = PersianDateHelper.FromPersianDate(expireAtPersian);
+        if (parsedDate == null)
+        {
+            NotificationService.ShowError("تاریخ انقضا معتبر نیست");
+            return;
+        }
+        createCommand.ExpireAt = parsedDate.Value;
         isSaving = true;
         try
         {

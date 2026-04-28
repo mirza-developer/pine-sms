@@ -112,8 +112,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">تاریخ انقضا <span class="text-danger">*</span></label>
-                                <InputDate class="form-control" @bind-Value="createCommand.ExpireAt" />
-                                <ValidationMessage For="@(() => createCommand.ExpireAt)" class="text-danger small" />
+                                <PersianDatePicker @bind-Value="expireAtPersian" />
                             </div>
                             <div class="d-flex gap-2 justify-content-end">
                                 <button type="submit" class="btn btn-success" disabled="@isSaving">
