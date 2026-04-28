@@ -8,6 +8,7 @@ namespace PineSms.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class ApiKeyController : ControllerBase
 {
     private readonly IApiKeyService apiKeyService;

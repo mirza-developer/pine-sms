@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Models;
 using PineSms.Api.Auth;
+using PineSms.Api.Swagger;
 using PineSms.Core;
 using PineSms.Identity;
 using PineSms.Persistence;
@@ -55,16 +56,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API key for order notification endpoint"
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            Array.Empty<string>()
-        }
-    });
+    c.OperationFilter<ApiKeyOperationFilter>();
 });
 
 var app = builder.Build();

@@ -33,6 +33,7 @@ public class OrderController : ControllerBase
 
     [HttpGet("statuses")]
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> GetStatuses()
     {
         var statuses = await orderService.GetAllOrderStatuses();
@@ -41,6 +42,7 @@ public class OrderController : ControllerBase
 
     [HttpPost("statuses")]
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UpsertStatus([FromBody] UpsertOrderStatusCommand command)
     {
         var (success, message) = await orderService.UpsertOrderStatus(command);
@@ -50,6 +52,7 @@ public class OrderController : ControllerBase
 
     [HttpDelete("statuses/{id:int}")]
     [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> DeleteStatus(int id)
     {
         var (success, message) = await orderService.DeleteOrderStatus(id);

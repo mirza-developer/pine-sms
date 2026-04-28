@@ -9,6 +9,7 @@ namespace PineSms.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class CustomerController : ControllerBase
 {
     private readonly ICustomerService customerService;
