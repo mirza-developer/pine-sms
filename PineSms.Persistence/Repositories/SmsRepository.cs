@@ -219,6 +219,11 @@ public class SmsRepository : ISmsService
     /// </summary>
     internal async Task<MelipayamakSendResult> SendToMelipayamak(string fromNumber, List<string> phoneNumbers, string messageText)
     {
+        List<string> errorStrings = new()
+        {
+            "محدودیت در حجم ارسال"
+        };
+
         try
         {
             using var client = httpClientFactory.CreateClient("Melipayamak");
@@ -235,7 +240,8 @@ public class SmsRepository : ISmsService
 
             var apiJson = await response.Content.ReadAsStringAsync();
 
-            if (!response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode
+                || errorStrings.Any(a=> apiJson.Contains(a)))
                 return new MelipayamakSendResult
                 {
                     Submitted = false,
@@ -268,5 +274,7 @@ public class SmsRepository : ISmsService
                 ErrorMessage = ex.Message
             };
         }
+
+       
     }
 }
