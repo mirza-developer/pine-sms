@@ -31,4 +31,6 @@ public class Customer : IBaseEntity
 
     /// <summary>True when this customer should receive SMS in every sending chunk, even if not explicitly selected.</summary>
     public bool IsTester { get; set; } = false;
+
+    public ICollection<CustomerOrder> CustomerOrders { get; set; } = new List<CustomerOrder>();
 }

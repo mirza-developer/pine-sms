@@ -22,6 +22,39 @@ namespace PineSms.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("PineSms.Core.Entities.ApiKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpireAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ApiKey_Key");
+
+                    b.ToTable("ApiKey");
+                });
+
             modelBuilder.Entity("PineSms.Core.Entities.Customer", b =>
                 {
                     b.Property<int>("Id")
@@ -67,6 +100,76 @@ namespace PineSms.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Customer");
+                });
+
+            modelBuilder.Entity("PineSms.Core.Entities.CustomerOrder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OrderCode")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("OrderStatusId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("IX_CustomerOrder_CustomerId");
+
+                    b.HasIndex("OrderCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CustomerOrder_OrderCode");
+
+                    b.HasIndex("OrderStatusId")
+                        .HasDatabaseName("IX_CustomerOrder_OrderStatusId");
+
+                    b.ToTable("CustomerOrder");
+                });
+
+            modelBuilder.Entity("PineSms.Core.Entities.OrderStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("LastChange")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OrderStatus_Code");
+
+                    b.ToTable("OrderStatus");
                 });
 
             modelBuilder.Entity("PineSms.Core.Entities.SmsLog", b =>
@@ -172,6 +275,24 @@ namespace PineSms.Persistence.Migrations
                     b.ToTable("SmsSendJobPart");
                 });
 
+            modelBuilder.Entity("PineSms.Core.Entities.CustomerOrder", b =>
+                {
+                    b.HasOne("PineSms.Core.Entities.Customer", "Customer")
+                        .WithMany("CustomerOrders")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PineSms.Core.Entities.OrderStatus", "OrderStatus")
+                        .WithMany("CustomerOrders")
+                        .HasForeignKey("OrderStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+                    b.Navigation("OrderStatus");
+                });
+
             modelBuilder.Entity("PineSms.Core.Entities.SmsSendJobPart", b =>
                 {
                     b.HasOne("PineSms.Core.Entities.SmsSendJob", "Job")
@@ -183,6 +304,16 @@ namespace PineSms.Persistence.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("PineSms.Core.Entities.Customer", b =>
+                {
+                    b.Navigation("CustomerOrders");
+                });
+
+            modelBuilder.Entity("PineSms.Core.Entities.OrderStatus", b =>
+                {
+                    b.Navigation("CustomerOrders");
+                });
+
             modelBuilder.Entity("PineSms.Core.Entities.SmsSendJob", b =>
                 {
                     b.Navigation("Parts");
@@ -191,3 +322,4 @@ namespace PineSms.Persistence.Migrations
         }
     }
 }
+

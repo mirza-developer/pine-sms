@@ -1,0 +1,156 @@
+@page "/settings/apikeys"
+
+<PageTitle>مدیریت کلیدهای API</PageTitle>
+
+@if (!AuthState.IsAuthenticated)
+{
+    Navigation.NavigateTo("/login");
+    return;
+}
+
+<div class="container-fluid px-3 px-md-4 mt-4">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <h4><span class="bi bi-key-fill me-2 text-warning"></span>مدیریت کلیدهای API</h4>
+        <button class="btn btn-success btn-sm" @onclick="OpenAddModal">
+            <span class="bi bi-plus-circle me-1"></span>ایجاد کلید جدید
+        </button>
+    </div>
+
+    <div class="alert alert-info mt-3 small">
+        <span class="bi bi-info-circle me-1"></span>
+        کلیدهای API برای دسترسی اپلیکیشن‌های خارجی به اندپوینت اعلام سفارش استفاده می‌شوند.
+        کلید را پس از ایجاد کپی کنید — بعداً قابل بازیابی نیست.
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center mt-4"><span class="spinner-border text-primary"></span></div>
+    }
+    else if (keys.Count == 0)
+    {
+        <div class="alert alert-warning mt-3">هیچ کلید API‌ای وجود ندارد.</div>
+    }
+    else
+    {
+        <div class="card shadow-sm mt-3">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>نام</th>
+                            <th>تاریخ انقضا</th>
+                            <th>تاریخ ایجاد</th>
+                            <th>وضعیت</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var key in keys)
+                        {
+                            var isExpired = key.ExpireAt < DateTime.Now;
+                            <tr>
+                                <td>@key.Id</td>
+                                <td>@key.Name</td>
+                                <td class="@(isExpired ? "text-danger" : "")">@PersianDateHelper.ToPersianDate(key.ExpireAt)</td>
+                                <td class="text-muted small">@PersianDateHelper.ToPersianDate(key.CreatedAt)</td>
+                                <td>
+                                    @if (isExpired)
+                                    {
+                                        <span class="badge bg-danger">منقضی</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">فعال</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmDelete(key)">
+                                        <span class="bi bi-trash"></span>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@if (showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.4)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">ایجاد کلید API جدید</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(newlyCreatedKey))
+                    {
+                        <div class="alert alert-success">
+                            <strong>کلید با موفقیت ایجاد شد.</strong> این کلید را کپی کنید — دیگر نمایش داده نخواهد شد:
+                            <div class="mt-2 p-2 bg-light border rounded font-monospace small text-break">@newlyCreatedKey</div>
+                            <button class="btn btn-sm btn-outline-primary mt-2" @onclick="CopyKey">
+                                <span class="bi bi-clipboard me-1"></span>کپی کلید
+                            </button>
+                        </div>
+                        <div class="text-end">
+                            <button class="btn btn-secondary" @onclick="CloseModal">بستن</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <EditForm Model="createCommand" OnValidSubmit="HandleCreate">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">نام کلید <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="createCommand.Name" placeholder="مثال: فروشگاه آنلاین" />
+                                <ValidationMessage For="@(() => createCommand.Name)" class="text-danger small" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">تاریخ انقضا <span class="text-danger">*</span></label>
+                                <InputDate class="form-control" @bind-Value="createCommand.ExpireAt" />
+                                <ValidationMessage For="@(() => createCommand.ExpireAt)" class="text-danger small" />
+                            </div>
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="submit" class="btn btn-success" disabled="@isSaving">
+                                    @if (isSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                    ایجاد کلید
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">انصراف</button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (deleteTarget != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.4)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger"><span class="bi bi-exclamation-triangle me-2"></span>تأیید حذف</h5>
+                    <button type="button" class="btn-close" @onclick="() => deleteTarget = null"></button>
+                </div>
+                <div class="modal-body">
+                    آیا از حذف کلید «<strong>@deleteTarget.Name</strong>» مطمئن هستید؟
+                    این عملیات غیرقابل بازگشت است.
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" @onclick="ExecuteDelete" disabled="@isSaving">
+                        @if (isSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        حذف
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="() => deleteTarget = null">انصراف</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

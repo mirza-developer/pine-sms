@@ -28,6 +28,9 @@ public class PineSmsDbContext : DbContext
     public DbSet<SmsLog> SmsLog { get; set; }
     public DbSet<SmsSendJob> SmsSendJob { get; set; }
     public DbSet<SmsSendJobPart> SmsSendJobPart { get; set; }
+    public DbSet<OrderStatus> OrderStatus { get; set; }
+    public DbSet<CustomerOrder> CustomerOrder { get; set; }
+    public DbSet<ApiKey> ApiKey { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,5 +41,32 @@ public class PineSmsDbContext : DbContext
         modelBuilder.Entity<SmsSendJobPart>()
             .HasIndex(p => new { p.Status, p.ScheduledAt })
             .HasDatabaseName("IX_SmsSendJobPart_Status_ScheduledAt");
+
+        modelBuilder.Entity<OrderStatus>()
+            .HasIndex(o => o.Code)
+            .IsUnique()
+            .HasDatabaseName("IX_OrderStatus_Code");
+
+        modelBuilder.Entity<CustomerOrder>()
+            .HasIndex(o => o.OrderCode)
+            .IsUnique()
+            .HasDatabaseName("IX_CustomerOrder_OrderCode");
+
+        modelBuilder.Entity<CustomerOrder>()
+            .HasOne(o => o.Customer)
+            .WithMany(c => c.CustomerOrders)
+            .HasForeignKey(o => o.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CustomerOrder>()
+            .HasOne(o => o.OrderStatus)
+            .WithMany(s => s.CustomerOrders)
+            .HasForeignKey(o => o.OrderStatusId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ApiKey>()
+            .HasIndex(k => k.Key)
+            .IsUnique()
+            .HasDatabaseName("IX_ApiKey_Key");
     }
 }
