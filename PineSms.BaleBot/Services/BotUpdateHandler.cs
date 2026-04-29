@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PineSms.BaleBot.Models;
 using PineSms.Persistence.Services;
+using PineSms.Shared;
+using System.Globalization;
 
 namespace PineSms.BaleBot.Services;
 
@@ -43,14 +45,14 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         if (order != null)
         {
-            replyText = $"وضعیت سفارش «{order.OrderCode}»:\n{order.OrderStatus.Title}\n(آخرین به‌روزرسانی: {order.UpdatedAt:yyyy/MM/dd HH:mm})";
+            replyText = $"وضعیت سفارش «{order.OrderCode}»:\n{order.OrderStatus.Title}\n(آخرین به‌روزرسانی: {PersianCalendarTools.GregorianToPersian(order.UpdatedAt)} {order.UpdatedAt.ToString("HH:mm")})";
         }
         else if (text.StartsWith('/'))
         {
             replyText = text.ToLowerInvariant() switch
             {
                 "/start" => "سلام! 👋\nبرای دریافت وضعیت سفارش خود، کد سفارش را ارسال کنید.",
-                "/help"  => "راهنما:\n- کد سفارش را ارسال کنید تا وضعیت آن را دریافت کنید.",
+                "/help"  => "راهنما:\n- مرا راهنمایی کن!.",
                 _        => "دستور ناشناخته. برای راهنمایی /help را ارسال کنید."
             };
         }

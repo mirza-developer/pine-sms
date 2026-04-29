@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PineSms.Core\PineSms.Core.csproj" />
     <ProjectReference Include="..\PineSms.Persistence\PineSms.Persistence.csproj" />
+    <ProjectReference Include="..\PineSms.Shared\PineSms.Shared.csproj" />
   </ItemGroup>
 
 </Project>

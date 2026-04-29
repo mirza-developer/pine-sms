@@ -4,5 +4,6 @@
   <Project Path="PineSms.Core/PineSms.Core.csproj" />
   <Project Path="PineSms.Identity/PineSms.Identity.csproj" />
   <Project Path="PineSms.Persistence/PineSms.Persistence.csproj" />
+  <Project Path="PineSms.Shared/PineSms.Shared.csproj" Id="07402509-3af7-432d-9f8e-e119702a43ef" />
   <Project Path="PineSms.UI/PineSms.UI.csproj" />
 </Solution>
