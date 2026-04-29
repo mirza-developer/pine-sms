@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="PineSms.Api/PineSms.Api.csproj" />
+  <Project Path="PineSms.BaleBot/PineSms.BaleBot.csproj" />
   <Project Path="PineSms.Core/PineSms.Core.csproj" />
   <Project Path="PineSms.Identity/PineSms.Identity.csproj" />
   <Project Path="PineSms.Persistence/PineSms.Persistence.csproj" />
