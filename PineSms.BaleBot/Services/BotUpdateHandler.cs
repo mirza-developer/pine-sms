@@ -52,7 +52,11 @@ public class BotUpdateHandler : IBotUpdateHandler
             replyText = text.ToLowerInvariant() switch
             {
                 "/start" => "سلام! 👋\nبرای دریافت وضعیت سفارش خود، کد سفارش را ارسال کنید.",
-                "/help"  => "راهنما:\n- مرا راهنمایی کن!.",
+                "/help"  => """
+                مزون اناناس کالکشن 
+                قطعا به قیمت ترین مزون ایران 
+                لینک کانال: ble.ir/join/GjY6MAY1ci
+                """,
                 _        => "دستور ناشناخته. برای راهنمایی /help را ارسال کنید."
             };
         }
