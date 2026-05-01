@@ -1,27 +1,41 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PineSms.BaleBot.Models;
+using PineSms.BaleBot.Tools;
 using PineSms.Persistence.Services;
 using PineSms.Shared;
-using System.Globalization;
 
 namespace PineSms.BaleBot.Services;
 
 /// <summary>
-/// Handles incoming Bale bot updates.
-/// - If the user sends an order code, replies with the current order status.
-/// - Otherwise, sends a help/welcome message.
+/// Handles incoming Bale bot updates by acting as a transparent bypass between
+/// the user and an AI chat agent powered by the Microsoft Agents SDK.
+///
+/// Flow:
+///  1. <c>/start</c> — clears any existing session, greets the user via AI.
+///  2. Any other message — forwarded to the AI agent using the user's persisted session.
+///  3. If the AI response contains <c>&lt;&lt;ORDER_CODE … &gt;&gt;</c> blocks, the order
+///     code is looked up in the database and the result is appended to the reply.
 /// </summary>
 public class BotUpdateHandler : IBotUpdateHandler
 {
     private readonly BaleBotClient botClient;
     private readonly PineSmsDbContext dbContext;
+    private readonly ChatAgentService agentService;
+    private readonly ChatSessionStore sessionStore;
     private readonly ILogger<BotUpdateHandler> logger;
 
-    public BotUpdateHandler(BaleBotClient botClient, PineSmsDbContext dbContext, ILogger<BotUpdateHandler> logger)
+    public BotUpdateHandler(
+        BaleBotClient botClient,
+        PineSmsDbContext dbContext,
+        ChatAgentService agentService,
+        ChatSessionStore sessionStore,
+        ILogger<BotUpdateHandler> logger)
     {
         this.botClient = botClient;
         this.dbContext = dbContext;
+        this.agentService = agentService;
+        this.sessionStore = sessionStore;
         this.logger = logger;
     }
 
@@ -34,37 +48,57 @@ public class BotUpdateHandler : IBotUpdateHandler
         var chatId = message.Chat.Id;
         var text = message.Text.Trim();
 
-        logger.LogInformation("Update {UpdateId}: chat={ChatId} text={Text}", update.UpdateId, chatId, text);
+        logger.LogInformation("Update {UpdateId}: chat={ChatId}", update.UpdateId, chatId);
 
-        string replyText;
-
-        // Check if the user is asking about an order by sending an order code
-        var order = await dbContext.CustomerOrder
-            .Include(o => o.OrderStatus)
-            .FirstOrDefaultAsync(o => o.OrderCode == text, ct);
-
-        if (order != null)
+        // /start → reset session so user always gets a fresh greeting
+        if (text.Equals("/start", StringComparison.OrdinalIgnoreCase))
         {
-            replyText = $"وضعیت سفارش «{order.OrderCode}»:\n{order.OrderStatus.Title}\n(آخرین به‌روزرسانی: {PersianCalendarTools.GregorianToPersian(order.UpdatedAt)} {order.UpdatedAt.ToString("HH:mm")})";
+            sessionStore.RemoveSession(chatId);
         }
-        else if (text.StartsWith('/'))
+
+        // Forward to AI agent (creates a new session automatically when sessionJson is null)
+        var existingSession = sessionStore.GetSession(chatId);
+        var (rawResponse, updatedSession) = await agentService.SendWithSessionAsync(existingSession, text);
+        sessionStore.SetSession(chatId, updatedSession);
+
+        // Extract any ORDER_CODE blocks the AI embedded in its response
+        var orderCodes = new List<string>();
+        var visibleResponse = ResponseBlockTools.StripOrderCodeBlocks(rawResponse, orderCodes);
+
+        // If the AI signalled one or more order codes, resolve them from the DB
+        if (orderCodes.Count > 0)
         {
-            replyText = text.ToLowerInvariant() switch
+            var statusLines = new List<string>();
+            foreach (var orderCode in orderCodes)
             {
-                "/start" => "سلام! 👋\nبرای دریافت وضعیت سفارش خود، کد سفارش را ارسال کنید.",
-                "/help"  => """
-                مزون اناناس کالکشن 
-                قطعا به قیمت ترین مزون ایران 
-                لینک کانال: ble.ir/join/GjY6MAY1ci
-                """,
-                _        => "دستور ناشناخته. برای راهنمایی /help را ارسال کنید."
-            };
-        }
-        else
-        {
-            replyText = "کد سفارش شما یافت نشد.\nلطفاً کد سفارش صحیح را وارد کنید یا برای راهنمایی /help را ارسال کنید.";
+                var order = await dbContext.CustomerOrder
+                    .Include(o => o.OrderStatus)
+                    .FirstOrDefaultAsync(o => o.OrderCode == orderCode, ct);
+
+                if (order != null)
+                {
+                    statusLines.Add(
+                        $"📦 سفارش «{order.OrderCode}»:\n" +
+                        $"وضعیت: {order.OrderStatus.Title}\n" +
+                        $"آخرین به‌روزرسانی: {PersianCalendarTools.GregorianToPersian(order.UpdatedAt)} {order.UpdatedAt:HH:mm}");
+                }
+                else
+                {
+                    statusLines.Add($"❌ سفارشی با کد «{orderCode}» یافت نشد.");
+                }
+            }
+
+            var statusBlock = string.Join("\n\n", statusLines);
+
+            // Append status info after the AI's visible text
+            if (!string.IsNullOrWhiteSpace(visibleResponse))
+                visibleResponse = visibleResponse + "\n\n" + statusBlock;
+            else
+                visibleResponse = statusBlock;
         }
 
-        await botClient.SendMessageAsync(chatId, replyText, ct);
+        if (!string.IsNullOrWhiteSpace(visibleResponse))
+            await botClient.SendMessageAsync(chatId, visibleResponse, ct);
     }
 }
+

@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PineSms.BaleBot.Services;
 using PineSms.BaleBot.Workers;
-using PineSms.Persistence;
 using PineSms.Persistence.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -33,6 +32,13 @@ builder.Services.AddHttpClient("BaleBotClient", client =>
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 
+// ── AI Agent ─────────────────────────────────────────────────────────────────
+// ChatAgentService is a singleton: it holds the initialized AIAgent instance
+// which is thread-safe after InitAsync is called once at startup.
+builder.Services.AddSingleton<ChatAgentService>();
+// ChatSessionStore is a singleton: it keeps per-user AI session JSON in memory.
+builder.Services.AddSingleton<ChatSessionStore>();
+
 // ── Bot services ─────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<BaleBotClient>();
 builder.Services.AddScoped<IBotUpdateHandler, BotUpdateHandler>();
@@ -41,4 +47,9 @@ builder.Services.AddScoped<IBotUpdateHandler, BotUpdateHandler>();
 builder.Services.AddHostedService<BaleBotWorker>();
 
 var host = builder.Build();
+
+// Initialize the AI agent before starting the worker loop
+var agentService = host.Services.GetRequiredService<ChatAgentService>();
+await agentService.InitAsync();
+
 await host.RunAsync();
