@@ -1,7 +1,5 @@
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using OpenAI;
 using OpenAI.Chat;
 using System.ClientModel;
@@ -33,7 +31,7 @@ public class ChatAgentService
     /// </summary>
     public async Task InitAsync()
     {
-        var apiKey = configuration["AiAgent:ApiKey"] ?? string.Empty;
+        var apiKey = configuration["AiAgent:ApiKey"];
         var model = configuration["AiAgent:Model"] ?? "gpt-4.1";
         var endpoint = configuration["AiAgent:Endpoint"] ?? "https://models.github.ai/inference";
 

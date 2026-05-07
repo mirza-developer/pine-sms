@@ -71,8 +71,8 @@ public class OrderRepository : IOrderService
         await dbContext.SaveChangesAsync();
 
         // 4. Notify the customer via Bale messenger
-        var notificationMessage = $"سفارش شما با کد {command.OrderCode} به وضعیت «{orderStatus.Title}» تغییر کرد.";
-        result.NotificationSent = await baleMessengerService.SendMessageAsync(phone, notificationMessage);
+        //var notificationMessage = $"سفارش شما با کد {command.OrderCode} به وضعیت «{orderStatus.Title}» تغییر کرد.";
+        //result.NotificationSent = await baleMessengerService.SendMessageAsync(phone, notificationMessage);
 
         result.Success = true;
         result.Message = result.IsNewOrder ? "سفارش ثبت شد" : "سفارش به‌روزرسانی شد";

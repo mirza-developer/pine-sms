@@ -34,6 +34,6 @@ public static class PersistenceServices
 
         services.AddScoped<IBaleMessengerService, BaleMessengerService>();
 
-        services.AddHostedService<ScheduledSmsWorker>();
+        //services.AddHostedService<ScheduledSmsWorker>();
     }
 }

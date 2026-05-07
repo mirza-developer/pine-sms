@@ -5,8 +5,24 @@ using PineSms.Api.Swagger;
 using PineSms.Core;
 using PineSms.Identity;
 using PineSms.Persistence;
+using Serilog;
 
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, loggerConfig) => loggerConfig
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.Seq(context.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
 
 builder.Services.AddControllers();
 builder.Services.AddCoreServices();
@@ -18,7 +34,7 @@ builder.Services.AddHttpClient("Melipayamak", client =>
 });
 builder.Services.AddHttpClient("BaleMessenger", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["BaleMessenger:BaseUrl"] ?? "https://tapi.bale.ai/");
+    client.BaseAddress = new Uri(builder.Configuration["BaleMessenger:BaseUrl"] ?? "https://safir.bale.ai/");
 });
 builder.Services.AddCors(options =>
 {
@@ -61,6 +77,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseSerilogRequestLogging();
 app.UseCors();
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -69,3 +86,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "PineSms API host terminated unexpectedly");
+}
+finally
+{
+    await Log.CloseAndFlushAsync();
+}

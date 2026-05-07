@@ -7,26 +7,28 @@ namespace PineSms.Persistence.Services.Messaging;
 
 /// <summary>
 /// Sends notifications via Bale Safir API (https://docs.bale.ai/safir).
-/// Configure BaleMessenger:Token and BaleMessenger:BaseUrl in appsettings.
+/// Configure BaleMessenger:ApiAccessKey and BaleMessenger:BotId in appsettings.
 /// </summary>
 public class BaleMessengerService : IBaleMessengerService
 {
     private readonly HttpClient httpClient;
     private readonly ILogger<BaleMessengerService> logger;
-    private readonly string token;
+    private readonly string apiAccessKey;
+    private readonly long botId;
 
     public BaleMessengerService(IHttpClientFactory httpClientFactory, IConfiguration configuration, ILogger<BaleMessengerService> logger)
     {
         this.httpClient = httpClientFactory.CreateClient("BaleMessenger");
         this.logger = logger;
-        this.token = configuration["BaleMessenger:Token"] ?? string.Empty;
+        this.apiAccessKey = configuration["BaleMessenger:Safir"] ?? string.Empty;
+        this.botId = long.TryParse(configuration["BaleMessenger:BotId"], out var id) ? id : 0;
     }
 
     public async Task<bool> SendMessageAsync(string phoneNumber, string message)
     {
-        if (string.IsNullOrEmpty(token))
+        if (string.IsNullOrEmpty(apiAccessKey))
         {
-            logger.LogWarning("BaleMessenger token is not configured. Skipping notification.");
+            logger.LogWarning("BaleMessenger API access key is not configured. Skipping notification.");
             return false;
         }
 
@@ -35,14 +37,25 @@ public class BaleMessengerService : IBaleMessengerService
 
         try
         {
-            // Bale Safir API: POST /bot{token}/sendMessage
+            // Bale Safir API v3: POST /api/v3/send_message
             var requestBody = new
             {
-                phone = phoneNumber,
-                text = message
+                bot_id = botId,
+                phone_number = $"98{phoneNumber}",
+                message_data = new
+                {
+                    message = new
+                    {
+                        text = message
+                    }
+                }
             };
 
-            var response = await httpClient.PostAsJsonAsync($"bot{token}/sendMessage", requestBody);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/v3/send_message");
+            request.Headers.Add("api-access-key", apiAccessKey);
+            request.Content = JsonContent.Create(requestBody);
+
+            var response = await httpClient.SendAsync(request);
 
             if (response.IsSuccessStatusCode)
             {
