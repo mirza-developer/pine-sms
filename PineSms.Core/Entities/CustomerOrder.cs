@@ -24,4 +24,7 @@ public class CustomerOrder : IBaseEntity
 
     [Required]
     public DateTime UpdatedAt { get; set; }
+
+    [StringLength(128)]
+    public string? PostalTrackingCode { get; set; }
 }

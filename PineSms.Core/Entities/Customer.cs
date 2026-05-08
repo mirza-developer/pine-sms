@@ -16,7 +16,7 @@ public class Customer : IBaseEntity
     public string SaveUserId { get; set; } = string.Empty;
 
     [Required]
-    public int SaveType { get; set; } // 1 = Form, 2 = Excel
+    public int SaveType { get; set; } // 1 = Form, 2 = Excel, 3 = API 
 
     [StringLength(128)]
     public string? Name { get; set; }

@@ -35,22 +35,28 @@ public class OrderRepository : IOrderService
                 SaveType = 3 // 3 = API
             };
             dbContext.Customer.Add(customer);
+
             await dbContext.SaveChangesAsync();
+
             result.IsNewCustomer = true;
         }
 
         // 2. Ensure order status exists
         var orderStatus = await dbContext.OrderStatus.FirstOrDefaultAsync(s => s.Code == command.OrderStatusCode);
-        if (orderStatus == null)
+      
+        if (orderStatus is null)
         {
             result.Success = false;
+           
             result.Message = $"وضعیت سفارش با کد '{command.OrderStatusCode}' یافت نشد";
+            
             return result;
         }
 
         // 3. Upsert customer order
         var order = await dbContext.CustomerOrder.FirstOrDefaultAsync(o => o.OrderCode == command.OrderCode);
-        if (order == null)
+       
+        if (order is null)
         {
             order = new CustomerOrder
             {
@@ -58,14 +64,18 @@ public class OrderRepository : IOrderService
                 CustomerId = customer.Id,
                 OrderStatusId = orderStatus.Id,
                 CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                UpdatedAt = DateTime.Now,
+                
             };
+            
             dbContext.CustomerOrder.Add(order);
+            
             result.IsNewOrder = true;
         }
         else
         {
             order.OrderStatusId = orderStatus.Id;
+
             order.UpdatedAt = DateTime.Now;
         }
 
@@ -76,7 +86,9 @@ public class OrderRepository : IOrderService
         //result.NotificationSent = await baleMessengerService.SendMessageAsync(phone, notificationMessage);
 
         result.Success = true;
+
         result.Message = result.IsNewOrder ? "سفارش ثبت شد" : "سفارش به‌روزرسانی شد";
+       
         return result;
     }
 
