@@ -19,12 +19,13 @@ public class OrderRepository : IOrderService
 
     public async Task<NotifyOrderResult> NotifyOrder(NotifyOrderCommand command)
     {
-        var result = new NotifyOrderResult();
+        NotifyOrderResult result = new();
 
-        // 1. Ensure customer exists
-        var phone = command.CustomerPhoneNumber;
+        var phone = NormalizePhoneNumber(command.CustomerPhoneNumber);
+        
         var customer = await dbContext.Customer.FirstOrDefaultAsync(c => c.PhoneNumber == phone);
-        if (customer == null)
+       
+        if (customer is null)
         {
             customer = new Customer
             {
@@ -131,5 +132,17 @@ public class OrderRepository : IOrderService
         dbContext.OrderStatus.Remove(status);
         await dbContext.SaveChangesAsync();
         return (true, "وضعیت سفارش حذف شد");
+    }
+
+    private static string NormalizePhoneNumber(string phone)
+    {
+        phone = phone.Trim();
+        if (phone.StartsWith("+98"))
+            phone = phone[3..];
+        else if (phone.StartsWith("0098"))
+            phone = phone[4..];
+        else if (phone.StartsWith("0"))
+            phone = phone[1..];
+        return phone;
     }
 }

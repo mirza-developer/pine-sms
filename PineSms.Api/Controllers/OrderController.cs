@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PineSms.Api.Auth;
+using PineSms.Api.Queue;
 using PineSms.Core.Contracts;
+using PineSms.Core.Dtos;
 using PineSms.Core.Features.Order;
 
 namespace PineSms.Api.Controllers;
@@ -11,10 +13,12 @@ namespace PineSms.Api.Controllers;
 public class OrderController : ControllerBase
 {
     private readonly IOrderService orderService;
+    private readonly OrderNotifyQueue orderNotifyQueue;
 
-    public OrderController(IOrderService orderService)
+    public OrderController(IOrderService orderService, OrderNotifyQueue orderNotifyQueue)
     {
         this.orderService = orderService;
+        this.orderNotifyQueue = orderNotifyQueue;
     }
 
     /// <summary>
@@ -23,12 +27,14 @@ public class OrderController : ControllerBase
     /// </summary>
     [HttpPost("notify")]
     [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
-    public async Task<IActionResult> Notify([FromBody] NotifyOrderCommand command)
+    public IActionResult Notify([FromBody] NotifyOrderCommand command)
     {
-        var result = await orderService.NotifyOrder(command);
-        if (!result.Success)
-            return BadRequest(new { result.Message });
-        return Ok(result);
+        orderNotifyQueue.Writer.TryWrite(command);
+        return Ok(new ResponseDto()
+        {
+            Success = true,
+            Message = "Data received and will be processed shortly"
+        });
     }
 
     [HttpGet("statuses")]

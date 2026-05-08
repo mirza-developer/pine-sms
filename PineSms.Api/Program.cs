@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Models;
 using PineSms.Api.Auth;
+using PineSms.Api.Queue;
 using PineSms.Api.Swagger;
+using PineSms.Api.Workers;
 using PineSms.Core;
+using PineSms.Core.Middlewares;
 using PineSms.Identity;
 using PineSms.Persistence;
 using Serilog;
@@ -13,28 +16,29 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
 
-try
-{
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, services, loggerConfig) => loggerConfig
-    .ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services)
     .Enrich.FromLogContext()
+    .Enrich.WithProperty("AppName", "PineSms.Api")
     .WriteTo.Console()
-    .WriteTo.Seq(context.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
+    .WriteTo.Debug()
+    .WriteTo.Seq(context.Configuration["Seq:ServerUrl"]));
 
 builder.Services.AddControllers();
 builder.Services.AddCoreServices();
 builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
+builder.Services.AddSingleton<OrderNotifyQueue>();
+builder.Services.AddHostedService<OrderNotifyWorker>();
 builder.Services.AddHttpClient("Melipayamak", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["Melipayamak:BaseUrl"] ?? "https://console.melipayamak.com");
+    client.BaseAddress = new Uri(builder.Configuration["Melipayamak:BaseUrl"]);
 });
 builder.Services.AddHttpClient("BaleMessenger", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["BaleMessenger:BaseUrl"] ?? "https://safir.bale.ai/");
+    client.BaseAddress = new Uri(builder.Configuration["BaleMessenger:BaseUrl"]);
 });
 builder.Services.AddCors(options =>
 {
@@ -44,25 +48,13 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add ApiKey authentication scheme alongside JWT
 builder.Services.AddAuthentication()
     .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.SchemeName, _ => { });
 
-// Add Swagger with both JWT and ApiKey security definitions
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "PineSms API", Version = "v1" });
-
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "JWT Bearer token"
-    });
 
     c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
     {
@@ -76,22 +68,13 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
-
-app.UseSerilogRequestLogging();
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<AppExceptionHandlerMiddleware>();
 app.UseCors();
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
-}
-catch (Exception ex)
-{
-    Log.Fatal(ex, "PineSms API host terminated unexpectedly");
-}
-finally
-{
-    await Log.CloseAndFlushAsync();
-}
+
