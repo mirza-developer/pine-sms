@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PineSms.Persistence.Services;
 
@@ -11,9 +12,11 @@ using PineSms.Persistence.Services;
 namespace PineSms.Persistence.Migrations
 {
     [DbContext(typeof(PineSmsDbContext))]
-    partial class PineSmsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260508210538_Add_Postal_Tracking_Code")]
+    partial class Add_Postal_Tracking_Code
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
