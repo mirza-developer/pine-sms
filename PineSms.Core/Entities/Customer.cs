@@ -16,7 +16,7 @@ public class Customer : IBaseEntity
     public string SaveUserId { get; set; } = string.Empty;
 
     [Required]
-    public int SaveType { get; set; } // 1 = Form, 2 = Excel
+    public int SaveType { get; set; } // 1 = Form, 2 = Excel, 3 = API 
 
     [StringLength(128)]
     public string? Name { get; set; }
@@ -31,4 +31,6 @@ public class Customer : IBaseEntity
 
     /// <summary>True when this customer should receive SMS in every sending chunk, even if not explicitly selected.</summary>
     public bool IsTester { get; set; } = false;
+
+    public ICollection<CustomerOrder> CustomerOrders { get; set; } = new List<CustomerOrder>();
 }

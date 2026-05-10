@@ -1,7 +1,10 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using PineSms.Core.Entities;
 using PineSms.Core.Features.Account;
+using PineSms.Core.Features.ApiKey;
 using PineSms.Core.Features.Customer;
+using PineSms.Core.Features.Order;
 using PineSms.Core.Features.Sms;
 
 namespace PineSms.UI.Services;
@@ -108,6 +111,60 @@ public class ApiClientService
     public async Task<SmsSendJobDto?> GetSmsJobAsync(int id)
     {
         return await httpClient.GetFromJsonAsync<SmsSendJobDto>($"api/sms/jobs/{id}");
+    }
+
+    // ── Order Statuses ──────────────────────────────────────────────────────
+    public async Task<List<OrderStatus>?> GetOrderStatusesAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<OrderStatus>>("api/order/statuses");
+    }
+
+    public async Task<(bool success, string message)> UpsertOrderStatusAsync(UpsertOrderStatusCommand command)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/order/statuses", command);
+        if (response.IsSuccessStatusCode)
+        {
+            var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
+            return (true, ok?.Message ?? "ذخیره شد");
+        }
+        var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (false, error?.Message ?? "خطا در ذخیره‌سازی");
+    }
+
+    public async Task<(bool success, string message)> DeleteOrderStatusAsync(int id)
+    {
+        var response = await httpClient.DeleteAsync($"api/order/statuses/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+            var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
+            return (true, ok?.Message ?? "حذف شد");
+        }
+        var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (false, error?.Message ?? "خطا در حذف");
+    }
+
+    // ── API Keys ─────────────────────────────────────────────────────────────
+    public async Task<List<ApiKey>?> GetApiKeysAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<ApiKey>>("api/apikey");
+    }
+
+    public async Task<CreateApiKeyResult?> CreateApiKeyAsync(CreateApiKeyCommand command)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/apikey", command);
+        return await response.Content.ReadFromJsonAsync<CreateApiKeyResult>();
+    }
+
+    public async Task<(bool success, string message)> DeleteApiKeyAsync(int id)
+    {
+        var response = await httpClient.DeleteAsync($"api/apikey/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+            var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
+            return (true, ok?.Message ?? "حذف شد");
+        }
+        var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (false, error?.Message ?? "خطا در حذف");
     }
 }
 

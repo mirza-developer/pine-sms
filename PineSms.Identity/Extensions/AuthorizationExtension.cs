@@ -26,7 +26,7 @@ public static class AuthorizationExtension
                 ClockSkew = TimeSpan.Zero,
                 RequireSignedTokens = true,
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = CryptographyTools.GetSymmetricKey(configSec["Signing"] ?? "PineSms_JWT_Secret_Key_32Chars"),
+                IssuerSigningKey = CryptographyTools.GetSymmetricKey(string.IsNullOrEmpty(configSec["Signing"]) ? "PineSms_JWT_Secret_Key_32Chars" : configSec["Signing"]!),
                 RequireExpirationTime = true,
                 ValidateLifetime = true,
                 ValidateAudience = true,

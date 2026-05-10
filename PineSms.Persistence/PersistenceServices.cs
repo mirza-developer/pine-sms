@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PineSms.Core.Contracts;
 using PineSms.Persistence.Repositories;
 using PineSms.Persistence.Services;
+using PineSms.Persistence.Services.Messaging;
 using PineSms.Persistence.Workers;
 
 namespace PineSms.Persistence;
@@ -28,6 +29,11 @@ public static class PersistenceServices
         services.AddScoped<SmsRepository>();
         services.AddScoped<ISmsService>(sp => sp.GetRequiredService<SmsRepository>());
 
-        services.AddHostedService<ScheduledSmsWorker>();
+        services.AddScoped<IOrderService, OrderRepository>();
+        services.AddScoped<IApiKeyService, ApiKeyRepository>();
+
+        services.AddScoped<IBaleMessengerService, BaleMessengerService>();
+
+        //services.AddHostedService<ScheduledSmsWorker>();
     }
 }

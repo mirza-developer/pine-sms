@@ -1,7 +1,22 @@
 <Solution>
-  <Project Path="PineSms.Api/PineSms.Api.csproj" />
-  <Project Path="PineSms.Core/PineSms.Core.csproj" />
-  <Project Path="PineSms.Identity/PineSms.Identity.csproj" />
-  <Project Path="PineSms.Persistence/PineSms.Persistence.csproj" />
-  <Project Path="PineSms.UI/PineSms.UI.csproj" />
+  <Folder Name="/src/" />
+  <Folder Name="/src/Api/">
+    <Project Path="PineSms.Api/PineSms.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Application/">
+    <Project Path="PineSms.Core/PineSms.Core.csproj" />
+    <Project Path="PineSms.Identity/PineSms.Identity.csproj" />
+    <Project Path="PineSms.Persistence/PineSms.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/" />
+  <Folder Name="/src/Presentation/Services/">
+    <Project Path="PineSms.Backup/PineSms.Backup.csproj" Id="29e1afc2-de7a-4e00-a2ad-9333bf382644" />
+    <Project Path="PineSms.BaleBot/PineSms.BaleBot.csproj" />
+  </Folder>
+  <Folder Name="/src/Presentation/UI/">
+    <Project Path="PineSms.UI/PineSms.UI.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="PineSms.Shared/PineSms.Shared.csproj" Id="07402509-3af7-432d-9f8e-e119702a43ef" />
+  </Folder>
 </Solution>
