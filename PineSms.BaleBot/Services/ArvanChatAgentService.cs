@@ -45,7 +45,7 @@ public class ArvanChatAgentService : IChatAgentService
         httpClient.BaseAddress = new Uri(baseAddress);
         httpClient.Timeout = TimeSpan.FromSeconds(60);
         httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", apiKey);
+            new AuthenticationHeaderValue("apikey", apiKey);
 
         systemInstructions = await LoadInstructionsAsync();
 
