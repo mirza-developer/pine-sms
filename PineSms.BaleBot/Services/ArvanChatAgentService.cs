@@ -14,15 +14,20 @@ namespace PineSms.BaleBot.Services;
 public class ArvanChatAgentService : IChatAgentService
 {
     private readonly IConfiguration configuration;
+    private readonly IHttpClientFactory httpClientFactory;
     private readonly ILogger<ArvanChatAgentService> logger;
 
     private HttpClient? httpClient;
     private string model = "openai/gpt-4o-mini";
     private string systemInstructions = string.Empty;
 
-    public ArvanChatAgentService(IConfiguration configuration, ILogger<ArvanChatAgentService> logger)
+    public ArvanChatAgentService(
+        IConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
+        ILogger<ArvanChatAgentService> logger)
     {
         this.configuration = configuration;
+        this.httpClientFactory = httpClientFactory;
         this.logger = logger;
     }
 
@@ -33,14 +38,12 @@ public class ArvanChatAgentService : IChatAgentService
         model = configuration["ArvanAiAgent:Model"] ?? "openai/gpt-4o-mini";
         var endpoint = configuration["ArvanAiAgent:Endpoint"] ?? "https://text.arvancloud.ir/oai/v1";
 
-        // Normalise the base address so relative paths resolve correctly.
+        // Normalize the base address so relative paths resolve correctly.
         var baseAddress = endpoint.TrimEnd('/') + "/";
 
-        httpClient = new HttpClient
-        {
-            BaseAddress = new Uri(baseAddress),
-            Timeout = TimeSpan.FromSeconds(60)
-        };
+        httpClient = httpClientFactory.CreateClient("ArvanAiClient");
+        httpClient.BaseAddress = new Uri(baseAddress);
+        httpClient.Timeout = TimeSpan.FromSeconds(60);
         httpClient.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", apiKey);
 

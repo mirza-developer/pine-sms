@@ -54,7 +54,10 @@ try
 
     var aiProvider = builder.Configuration["AiProvider"] ?? "github";
     if (aiProvider.Equals("arvan", StringComparison.OrdinalIgnoreCase))
+    {
+        builder.Services.AddHttpClient("ArvanAiClient");
         builder.Services.AddSingleton<IChatAgentService, ArvanChatAgentService>();
+    }
     else
         builder.Services.AddSingleton<IChatAgentService, ChatAgentService>();
     builder.Services.AddSingleton<ChatSessionStore>();
