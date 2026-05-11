@@ -21,14 +21,14 @@ public class BotUpdateHandler : IBotUpdateHandler
 {
     private readonly BaleBotClient botClient;
     private readonly PineSmsDbContext dbContext;
-    private readonly ChatAgentService agentService;
+    private readonly IChatAgentService agentService;
     private readonly ChatSessionStore sessionStore;
     private readonly ILogger<BotUpdateHandler> logger;
 
     public BotUpdateHandler(
         BaleBotClient botClient,
         PineSmsDbContext dbContext,
-        ChatAgentService agentService,
+        IChatAgentService agentService,
         ChatSessionStore sessionStore,
         ILogger<BotUpdateHandler> logger)
     {

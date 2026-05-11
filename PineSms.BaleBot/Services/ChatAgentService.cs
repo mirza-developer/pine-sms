@@ -11,7 +11,7 @@ namespace PineSms.BaleBot.Services;
 /// Wraps the Microsoft Agents AI SDK to provide a session-aware AI chat agent
 /// for the Bale bot. Adapted from the Silo.Ai.Agent pattern.
 /// </summary>
-public class ChatAgentService
+public class ChatAgentService : IChatAgentService
 {
     private readonly IConfiguration configuration;
     private readonly ILogger<ChatAgentService> logger;

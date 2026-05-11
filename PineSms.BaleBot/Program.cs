@@ -52,7 +52,11 @@ try
         client.Timeout = TimeSpan.FromSeconds(60);
     });
 
-    builder.Services.AddSingleton<ChatAgentService>();
+    var aiProvider = builder.Configuration["AiProvider"] ?? "github";
+    if (aiProvider.Equals("arvan", StringComparison.OrdinalIgnoreCase))
+        builder.Services.AddSingleton<IChatAgentService, ArvanChatAgentService>();
+    else
+        builder.Services.AddSingleton<IChatAgentService, ChatAgentService>();
     builder.Services.AddSingleton<ChatSessionStore>();
     builder.Services.AddSingleton<BaleBotClient>();
     builder.Services.AddScoped<IBotUpdateHandler, BotUpdateHandler>();
@@ -61,7 +65,7 @@ try
 
     var host = builder.Build();
 
-    var agentService = host.Services.GetRequiredService<ChatAgentService>();
+    var agentService = host.Services.GetRequiredService<IChatAgentService>();
     await agentService.InitAsync();
 
     await host.RunAsync();
