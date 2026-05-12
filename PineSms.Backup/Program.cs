@@ -11,6 +11,11 @@ try
 {
     var builder = Host.CreateApplicationBuilder(args);
 
+    builder.Services.AddWindowsService(options =>
+    {
+        options.ServiceName = "PineSms Backup Service";
+    });
+
     builder.Services.AddSerilog((services, loggerConfig) => loggerConfig
         .ReadFrom.Configuration(builder.Configuration)
         .ReadFrom.Services(services)

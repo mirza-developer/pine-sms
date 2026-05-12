@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PineSms.BaleBot.Models;
@@ -63,7 +64,8 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         // Extract any ORDER_CODE blocks the AI embedded in its response
         var orderCodes = new List<string>();
-        var visibleResponse = ResponseBlockTools.StripOrderCodeBlocks(rawResponse, orderCodes);
+        var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(rawResponse, orderCodes);
+        ResponseBlockTools.StripComplaintBlocks(rawResponse, out var complaintJson);
 
         // If the AI signalled one or more order codes, resolve them from the DB
         if (orderCodes.Count > 0)
@@ -91,14 +93,65 @@ public class BotUpdateHandler : IBotUpdateHandler
             var statusBlock = string.Join("\n\n", statusLines);
 
             // Append status info after the AI's visible text
-            if (!string.IsNullOrWhiteSpace(visibleResponse))
-                visibleResponse = visibleResponse + "\n\n" + statusBlock;
+            if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
+                visibleOrderCodes = visibleOrderCodes + "\n\n" + statusBlock;
             else
-                visibleResponse = statusBlock;
+                visibleOrderCodes = statusBlock;
+
+            if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
+                await botClient.SendMessageAsync(chatId, visibleOrderCodes, ct);
+        }
+        else if (!string.IsNullOrEmpty(complaintJson))
+        {
+            string messageComplaintSuccess = $"📣 اطلاعات شما ثبت شد:\nپشتیبانی ما در اسرع وقت با شما تماس خواهد گرفت.";
+
+            await botClient.SendMessageAsync(chatId, messageComplaintSuccess, ct);
+
+            using var complaintDoc = JsonDocument.Parse(complaintJson);
+
+            var root = complaintDoc.RootElement;
+
+            var orderCode = root.GetProperty("OrderCode").GetString();
+
+            var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+
+            var date = root.GetProperty("Date").GetString();
+
+            var description = root.GetProperty("Description").GetString();
+
+            var complaintChatId = root.GetProperty("ComplaintChatId").GetInt64();
+
+            string complaintLogForTrackingGroup = $"📣 شکایت/درخواست پیگیری جدید ثبت شد:\n" +
+                $"کد سفارش: {orderCode}\n" +
+                $"شماره تماس: {phoneNumber}\n" +
+                $"تاریخ: {date}\n" +
+                $"توضیحات: {description}\n";
+
+            var order = await dbContext.CustomerOrder
+                   .Include(o => o.OrderStatus)
+                   .FirstOrDefaultAsync(o => o.OrderCode == orderCode, ct);
+
+            if (order is not null)
+            {
+                complaintLogForTrackingGroup += "\n" +
+                    $"📦 سفارش «{order.OrderCode}»:\n" +
+                    $"وضعیت: {order.OrderStatus.Title}\n" +
+                    $"آخرین به‌روزرسانی: {PersianCalendarTools.GregorianToPersian(order.UpdatedAt)} {order.UpdatedAt:HH:mm}";
+            }
+            else
+            {
+                complaintLogForTrackingGroup += "\n" + $"❌ سفارشی با کد «{orderCode}» یافت نشد.";
+            }
+
+            complaintLogForTrackingGroup += "\n #case "; 
+
+            await botClient.SendMessageAsync(complaintChatId, complaintLogForTrackingGroup, ct);
+        }
+        else
+        {
+            await botClient.SendMessageAsync(chatId, rawResponse, ct);
         }
 
-        if (!string.IsNullOrWhiteSpace(visibleResponse))
-            await botClient.SendMessageAsync(chatId, visibleResponse, ct);
     }
 }
 

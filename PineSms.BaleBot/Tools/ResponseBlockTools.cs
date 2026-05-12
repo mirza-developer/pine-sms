@@ -14,6 +14,7 @@ namespace PineSms.BaleBot.Tools;
 public static class ResponseBlockTools
 {
     private const string OrderCodeStart = "<<ORDER_CODE";
+    private const string ComplaintStart = "<<COMPLAINT";
     private const string BlockEnd = ">>";
 
     /// <summary>
@@ -48,6 +49,40 @@ public static class ResponseBlockTools
 
             if (collectedOrderCodes is not null && content.Length > 0)
                 collectedOrderCodes.Add(content);
+
+            var blockLength = (blockEnd + BlockEnd.Length) - blockStart;
+            text = text.Remove(blockStart, blockLength);
+            startIndex = blockStart;
+        }
+
+        return text.Trim();
+    }
+
+    public static string StripComplaintBlocks(string text, out string? collectedComplaintData)
+    {
+        collectedComplaintData = null;
+
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var startIndex = 0;
+
+        while (startIndex < text.Length)
+        {
+            var blockStart = text.IndexOf(ComplaintStart, startIndex, StringComparison.OrdinalIgnoreCase);
+            if (blockStart == -1)
+                break;
+
+            var blockEnd = text.IndexOf(BlockEnd, blockStart + ComplaintStart.Length, StringComparison.OrdinalIgnoreCase);
+            if (blockEnd == -1)
+                break;
+
+            var content = text
+                .Substring(blockStart + ComplaintStart.Length, blockEnd - (blockStart + ComplaintStart.Length))
+                .Trim();
+
+            if (content.Length > 0)
+                collectedComplaintData = content;
 
             var blockLength = (blockEnd + BlockEnd.Length) - blockStart;
             text = text.Remove(blockStart, blockLength);
