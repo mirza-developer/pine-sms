@@ -65,7 +65,8 @@ public class BotUpdateHandler : IBotUpdateHandler
         // Extract any ORDER_CODE blocks the AI embedded in its response
         var orderCodes = new List<string>();
         var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(rawResponse, orderCodes);
-        ResponseBlockTools.StripComplaintBlocks(rawResponse, out var complaintJson);
+        visibleOrderCodes = ResponseBlockTools.StripComplaintBlocks(visibleOrderCodes, out var complaintJson);
+        visibleOrderCodes = ResponseBlockTools.StripSatisfactionBlocks(visibleOrderCodes, out var satisfactionJson);
 
         // If the AI signalled one or more order codes, resolve them from the DB
         if (orderCodes.Count > 0)
@@ -147,9 +148,31 @@ public class BotUpdateHandler : IBotUpdateHandler
 
             await botClient.SendMessageAsync(complaintChatId, complaintLogForTrackingGroup, ct);
         }
+        else if (!string.IsNullOrEmpty(satisfactionJson))
+        {
+            string messageSatisfactionSuccess = $"🌸 پیام شما با موفقیت ثبت شد و به مدیریت ارسال گردید. از همراهی شما سپاسگزاریم.";
+
+            await botClient.SendMessageAsync(chatId, messageSatisfactionSuccess, ct);
+
+            using var satisfactionDoc = JsonDocument.Parse(satisfactionJson);
+            var root = satisfactionDoc.RootElement;
+
+            string orderCode = root.TryGetProperty("OrderCode", out var ocProp) ? ocProp.GetString() : "نامشخص";
+            string description = root.TryGetProperty("Description", out var descProp) ? descProp.GetString() : "";
+            long satisfactionChatId = root.TryGetProperty("SatisfactionChatId", out var chatProp) ? chatProp.GetInt64() : 4675184120;
+
+            string satisfactionLogForManagersGroup = $"🌸 پیام رضایت جدید ثبت شد:\n" +
+                $"کد سفارش: {orderCode}\n" +
+                $"توضیحات: {description}\n";
+
+            // If the user sent a photo with the message, we can forward that as well if the update contains it.
+            // But since the task only asks to "send this data in a message to our managers group", we'll just send the text log.
+
+            await botClient.SendMessageAsync(satisfactionChatId, satisfactionLogForManagersGroup, ct);
+        }
         else
         {
-            await botClient.SendMessageAsync(chatId, rawResponse, ct);
+            await botClient.SendMessageAsync(chatId, visibleOrderCodes, ct);
         }
 
     }

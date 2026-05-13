@@ -1,14 +1,14 @@
 <Solution>
   <Folder Name="/src/" />
-  <Folder Name="/src/Api/">
-    <Project Path="PineSms.Api/PineSms.Api.csproj" />
-  </Folder>
   <Folder Name="/src/Application/">
     <Project Path="PineSms.Core/PineSms.Core.csproj" />
     <Project Path="PineSms.Identity/PineSms.Identity.csproj" />
     <Project Path="PineSms.Persistence/PineSms.Persistence.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/" />
+  <Folder Name="/src/Presentation/Api/">
+    <Project Path="PineSms.Api/PineSms.Api.csproj" />
+  </Folder>
   <Folder Name="/src/Presentation/Services/">
     <Project Path="PineSms.Backup/PineSms.Backup.csproj" Id="29e1afc2-de7a-4e00-a2ad-9333bf382644" />
     <Project Path="PineSms.BaleBot/PineSms.BaleBot.csproj" />

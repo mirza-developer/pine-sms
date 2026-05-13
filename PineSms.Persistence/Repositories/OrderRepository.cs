@@ -22,7 +22,14 @@ public class OrderRepository : IOrderService
         NotifyOrderResult result = new();
 
         var phone = NormalizePhoneNumber(command.CustomerPhoneNumber);
-        
+
+        if (phone.Length > 10)
+        {
+            result.Success = false;
+            result.Message = $"شماره تلفن '{command.CustomerPhoneNumber}' معتبر نیست";
+            return result;
+        }
+
         var customer = await dbContext.Customer.FirstOrDefaultAsync(c => c.PhoneNumber == phone);
        
         if (customer is null)
@@ -53,7 +60,11 @@ public class OrderRepository : IOrderService
             return result;
         }
 
-        // 3. Upsert customer order
+        if (command.OrderCode.StartsWith("wc-"))
+        {
+            command.OrderCode = command.OrderCode.Replace("wc-","");
+        }
+ 
         var order = await dbContext.CustomerOrder.FirstOrDefaultAsync(o => o.OrderCode == command.OrderCode);
        
         if (order is null)
@@ -153,6 +164,8 @@ public class OrderRepository : IOrderService
             phone = phone[3..];
         else if (phone.StartsWith("0098"))
             phone = phone[4..];
+        else if (phone.StartsWith("98") && phone.Length == 12)
+            phone = phone[2..];
         else if (phone.StartsWith("0"))
             phone = phone[1..];
         return phone;
