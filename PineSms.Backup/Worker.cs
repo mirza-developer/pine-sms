@@ -16,10 +16,15 @@ public class Worker(ILogger<Worker> logger, IOptions<BackupSettings> options, IC
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+
             try
             {
                 await RunBackupCycleAsync(stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -54,6 +59,10 @@ public class Worker(ILogger<Worker> logger, IOptions<BackupSettings> options, IC
             logger.LogInformation("Uploading to FTP: {Host}", _settings.Ftp.Host);
             await UploadToFtpAsync(zipFilePath, zipFileName, cancellationToken);
             logger.LogInformation("Upload complete: {File}", zipFileName);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
