@@ -37,6 +37,15 @@ public class OrderController : ControllerBase
         });
     }
 
+    [HttpPost("bulk-tracking")]
+    [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> BulkUpdateTracking([FromBody] BulkUpdateTrackingCommand command)
+    {
+        var result = await orderService.BulkUpdateTracking(command);
+        return Ok(result);
+    }
+
     [HttpGet("statuses")]
     [Authorize]
     [ApiExplorerSettings(IgnoreApi = true)]
