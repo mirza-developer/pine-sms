@@ -14,8 +14,7 @@ namespace PineSms.BaleBot.Tools;
 public static class ResponseBlockTools
 {
     private const string OrderCodeStart = "<<ORDER_CODE";
-    private const string ComplaintStart = "<<COMPLAINT";
-    private const string SatisfactionStart = "<<SATISFACTION";
+    private const string FeedbackStart = "<<FEEDBACK";
     private const string BlockEnd = ">>";
 
     /// <summary>
@@ -59,9 +58,18 @@ public static class ResponseBlockTools
         return text.Trim();
     }
 
-    public static string StripComplaintBlocks(string text, out string? collectedComplaintData)
+    /// <summary>
+    /// Strips all <c>&lt;&lt;FEEDBACK … &gt;&gt;</c> blocks from <paramref name="text"/>.
+    /// Extracted feedback JSON is returned via <paramref name="collectedFeedbackData"/>.
+    /// </summary>
+    /// <param name="text">Raw AI response text that may contain FEEDBACK blocks.</param>
+    /// <param name="collectedFeedbackData">
+    /// Output parameter to receive the trimmed feedback JSON from the block.
+    /// </param>
+    /// <returns>The cleaned response text with all FEEDBACK blocks removed.</returns>
+    public static string StripFeedbackBlocks(string text, out string? collectedFeedbackData)
     {
-        collectedComplaintData = null;
+        collectedFeedbackData = null;
 
         if (string.IsNullOrEmpty(text))
             return text;
@@ -70,54 +78,20 @@ public static class ResponseBlockTools
 
         while (startIndex < text.Length)
         {
-            var blockStart = text.IndexOf(ComplaintStart, startIndex, StringComparison.OrdinalIgnoreCase);
+            var blockStart = text.IndexOf(FeedbackStart, startIndex, StringComparison.OrdinalIgnoreCase);
             if (blockStart == -1)
                 break;
 
-            var blockEnd = text.IndexOf(BlockEnd, blockStart + ComplaintStart.Length, StringComparison.OrdinalIgnoreCase);
+            var blockEnd = text.IndexOf(BlockEnd, blockStart + FeedbackStart.Length, StringComparison.OrdinalIgnoreCase);
             if (blockEnd == -1)
                 break;
 
             var content = text
-                .Substring(blockStart + ComplaintStart.Length, blockEnd - (blockStart + ComplaintStart.Length))
+                .Substring(blockStart + FeedbackStart.Length, blockEnd - (blockStart + FeedbackStart.Length))
                 .Trim();
 
             if (content.Length > 0)
-                collectedComplaintData = content;
-
-            var blockLength = (blockEnd + BlockEnd.Length) - blockStart;
-            text = text.Remove(blockStart, blockLength);
-            startIndex = blockStart;
-        }
-
-        return text.Trim();
-    }
-
-    public static string StripSatisfactionBlocks(string text, out string? collectedSatisfactionData)
-    {
-        collectedSatisfactionData = null;
-
-        if (string.IsNullOrEmpty(text))
-            return text;
-
-        var startIndex = 0;
-
-        while (startIndex < text.Length)
-        {
-            var blockStart = text.IndexOf(SatisfactionStart, startIndex, StringComparison.OrdinalIgnoreCase);
-            if (blockStart == -1)
-                break;
-
-            var blockEnd = text.IndexOf(BlockEnd, blockStart + SatisfactionStart.Length, StringComparison.OrdinalIgnoreCase);
-            if (blockEnd == -1)
-                break;
-
-            var content = text
-                .Substring(blockStart + SatisfactionStart.Length, blockEnd - (blockStart + SatisfactionStart.Length))
-                .Trim();
-
-            if (content.Length > 0)
-                collectedSatisfactionData = content;
+                collectedFeedbackData = content;
 
             var blockLength = (blockEnd + BlockEnd.Length) - blockStart;
             text = text.Remove(blockStart, blockLength);
