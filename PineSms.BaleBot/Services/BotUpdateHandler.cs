@@ -82,6 +82,7 @@ public class BotUpdateHandler : IBotUpdateHandler
                     statusLines.Add(
                         $"📦 سفارش «{order.OrderCode}»:\n" +
                         $"وضعیت: {order.OrderStatus.Title}\n" +
+                        (!string.IsNullOrEmpty(order.PostalTrackingCode) ? $"کد مرسوله پستی: {order.PostalTrackingCode}\n" : "") +
                         $"آخرین به‌روزرسانی: {PersianCalendarTools.GregorianToPersian(order.UpdatedAt)} {order.UpdatedAt:HH:mm}");
                 }
                 else

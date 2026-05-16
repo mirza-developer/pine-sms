@@ -18,6 +18,13 @@ public partial class Login
 
     protected override void OnInitialized()
     {
+#if DEBUG
+        loginModel = new()
+        {
+            Password = "Admin@123",
+            Username = "admin"
+        };
+#endif
         if (AuthState.IsAuthenticated)
             Navigation.NavigateTo("/");
     }

@@ -17,7 +17,7 @@ public class RequestLoggingMiddleware
 
     public async Task Invoke(HttpContext context)
     {
-        if (!context.Request.Path.Value.ToLower().Contains("account"))
+        if (!context.Request.Path.Value.ToLower().Contains("auth"))
         {
             Stream originalBody = context.Request.Body;
             

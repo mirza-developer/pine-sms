@@ -2,10 +2,25 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using PineSms.UI.Components;
 using PineSms.UI.Services;
+using Serilog;
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
 System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, loggerConfig) => loggerConfig
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("AppName", "PineSms.UI")
+    .WriteTo.Console()
+    .WriteTo.Debug()
+    .WriteTo.Seq(context.Configuration["Seq:ServerUrl"]));
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
