@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.JSInterop;
 using PineSms.UI.Services;
 
 namespace PineSms.UI.Components.Layout;
@@ -8,6 +9,7 @@ public partial class MainLayout : IDisposable
 {
     [Inject] private AuthStateService AuthState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     private bool collapseNavMenu = true;
     private bool isAuthInitialized = false;
@@ -31,7 +33,11 @@ public partial class MainLayout : IDisposable
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         collapseNavMenu = true;
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(async () =>
+        {
+            await SetBodyScrollLock(false);
+            StateHasChanged();
+        });
     }
 
     private void OnAuthStateChanged(Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> task)
@@ -39,7 +45,21 @@ public partial class MainLayout : IDisposable
         InvokeAsync(StateHasChanged);
     }
 
-    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
+    private async Task ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+        await SetBodyScrollLock(!collapseNavMenu);
+    }
+
+    private async Task SetBodyScrollLock(bool locked)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval",
+                locked ? "document.body.classList.add('nav-open')" : "document.body.classList.remove('nav-open')");
+        }
+        catch { }
+    }
     private async Task Logout()
     {
         await AuthState.LogoutAsync();
@@ -50,5 +70,6 @@ public partial class MainLayout : IDisposable
     {
         Navigation.LocationChanged -= OnLocationChanged;
         AuthState.AuthenticationStateChanged -= OnAuthStateChanged;
+        try { JS.InvokeVoidAsync("eval", "document.body.classList.remove('nav-open')"); } catch { }
     }
 }

@@ -5,6 +5,11 @@ html, body {
     font-size: 14px;
 }
 
+/* Prevent background scroll when the mobile nav drawer is open */
+body.nav-open {
+    overflow: hidden;
+}
+
 @media (min-width: 768px) {
     html, body {
         font-size: 15px;
