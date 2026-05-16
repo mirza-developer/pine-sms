@@ -202,8 +202,8 @@ main {
     to   { opacity: 1; }
 }
 
-/* ===== Mobile (< 641px): fixed overlay drawer ===== */
-@media (max-width: 640.98px) {
+/* ===== Mobile (< 768px): fixed overlay drawer ===== */
+@media (max-width: 767.98px) {
     /* Sidebar is a fixed drawer that slides in from the right (RTL) */
     .sidebar {
         position: fixed;
@@ -231,8 +231,8 @@ main {
     }
 }
 
-/* ===== Desktop (≥ 641px): sticky side panel ===== */
-@media (min-width: 641px) {
+/* ===== Desktop (≥ 768px): sticky side panel ===== */
+@media (min-width: 768px) {
     .page {
         flex-direction: row;
     }
