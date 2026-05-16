@@ -10,7 +10,12 @@
 else
 {
     <div class="page" style="direction:rtl;">
-        <div class="sidebar">
+
+        @* Backdrop – mobile only; tapping it closes the drawer *@
+        <div class="sidebar-backdrop @(collapseNavMenu ? "" : "sidebar-backdrop--visible")"
+             @onclick="ToggleNavMenu"></div>
+
+        <div class="sidebar @(collapseNavMenu ? "" : "sidebar--open")">
             <div class="sidebar-brand">
                 <a class="brand-link" href="">
                     <span class="brand-icon bi bi-tree-fill"></span>
@@ -19,12 +24,13 @@ else
                         <span class="brand-tagline">مدیریت پیامک</span>
                     </div>
                 </a>
-                <button class="toggler-btn" title="@TogglerTitle" @onclick="ToggleNavMenu">
-                    <span class="bi @TogglerIconClass"></span>
+                @* Close button – only visible on mobile inside the open drawer *@
+                <button class="toggler-btn sidebar-close-btn" title="بستن منو" @onclick="ToggleNavMenu">
+                    <span class="bi bi-x-lg"></span>
                 </button>
             </div>
 
-            <div class="@NavMenuCssClass nav-scrollable">
+            <div class="nav-scrollable">
                 <NavMenu />
 
                 @if (AuthState.IsAuthenticated)
@@ -44,15 +50,16 @@ else
 
         <main>
             <div class="top-row px-3 px-md-4 d-flex align-items-center gap-2">
-                <button class="toggler-btn toggler-btn--light d-md-none" title="@TogglerTitle" @onclick="ToggleNavMenu">
-                    <span class="bi @TogglerIconClass"></span>
+                @* Hamburger – mobile only; opens the sidebar drawer *@
+                <button class="toggler-btn toggler-btn--light d-md-none" title="باز کردن منو" @onclick="ToggleNavMenu">
+                    <span class="bi bi-list"></span>
                 </button>
-                <span class="fw-semibold text-secondary d-md-none" style="font-size:.85rem;">PineSms</span>
+                <span class="fw-semibold text-secondary d-md-none ms-1" style="font-size:.85rem;">PineSms</span>
 
                 @if (AuthState.IsAuthenticated)
                 {
                     <span class="text-muted small d-none d-md-flex align-items-center gap-1">
-                        <span class="bi bi-person-circle"></span>@AuthState.PersianName
+                        <span class="bi bi-person-circle me-1"></span>@AuthState.PersianName
                     </span>
                     <button class="btn btn-sm btn-outline-danger ms-auto d-none d-md-inline-flex align-items-center gap-1" @onclick="Logout">
                         <span class="bi bi-box-arrow-right"></span>خروج

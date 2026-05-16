@@ -11,7 +11,6 @@ public partial class MainLayout : IDisposable
 
     private bool collapseNavMenu = true;
     private bool isAuthInitialized = false;
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     protected override void OnInitialized()
     {
@@ -40,11 +39,7 @@ public partial class MainLayout : IDisposable
         InvokeAsync(StateHasChanged);
     }
 
-    private string TogglerIconClass => collapseNavMenu ? "bi-list" : "bi-x-lg";
-    private string TogglerTitle    => collapseNavMenu ? "باز کردن منو" : "بستن منو";
-
     private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
-
     private async Task Logout()
     {
         await AuthState.LogoutAsync();

@@ -3,11 +3,14 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
 }
 
 main {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ===== Sidebar ===== */
@@ -15,10 +18,9 @@ main {
     background: linear-gradient(160deg, #05276b 0%, #0d1f4e 50%, #2d0540 100%);
     display: flex;
     flex-direction: column;
-    min-height: 0;
 }
 
-/* nav-scrollable acts as the flex-grow region between brand and footer */
+/* nav-scrollable: flex-grow region between brand and footer */
 .nav-scrollable {
     display: flex;
     flex-direction: column;
@@ -73,7 +75,7 @@ main {
     color: rgba(255,255,255,0.5);
 }
 
-/* ===== Hamburger toggler ===== */
+/* ===== Toggler buttons ===== */
 .toggler-btn {
     display: flex;
     align-items: center;
@@ -86,7 +88,8 @@ main {
     color: rgba(255,255,255,0.8);
     cursor: pointer;
     font-size: 1.1rem;
-    transition: background .15s ease;
+    transition: background .15s ease, color .15s ease;
+    flex-shrink: 0;
 }
 
 .toggler-btn:hover {
@@ -94,7 +97,7 @@ main {
     color: #fff;
 }
 
-/* Variant for light (white) surfaces such as the top-row */
+/* Light variant for the white top-row */
 .toggler-btn--light {
     background: transparent;
     border-color: #dee2e6;
@@ -107,7 +110,12 @@ main {
     border-color: #ced4da;
 }
 
-/* ===== Sidebar footer (inside collapsible nav) ===== */
+/* Close (X) button inside the drawer: hidden on desktop, shown on mobile */
+.sidebar-close-btn {
+    display: none;
+}
+
+/* ===== Sidebar footer ===== */
 .sidebar-footer {
     margin-top: auto;
     padding: .75rem 1rem;
@@ -164,6 +172,7 @@ main {
     padding: 0 1rem;
     box-shadow: 0 1px 4px rgba(0,0,0,.05);
     gap: .5rem;
+    flex-shrink: 0;
 }
 
 .top-row ::deep a,
@@ -172,16 +181,49 @@ main {
     text-decoration: none;
 }
 
-/* ===== Mobile (< 641px) ===== */
+/* ===== Backdrop (mobile only) ===== */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1049;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.sidebar-backdrop--visible {
+    display: block;
+    animation: fadeIn .2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ===== Mobile (< 641px): fixed overlay drawer ===== */
 @media (max-width: 640.98px) {
-    .toggler-btn {
-        display: flex;
+    /* Sidebar is a fixed drawer that slides in from the right (RTL) */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 270px;
+        z-index: 1050;
+        transform: translateX(110%);
+        transition: transform .28s cubic-bezier(.25, .46, .45, .94);
+        box-shadow: -6px 0 28px rgba(0, 0, 0, 0.4);
     }
 
-    /* When open, give the nav a visible border */
-    .nav-scrollable:not(.collapse) {
-        border-top: 1px solid rgba(255,255,255,0.06);
-        border-bottom: 1px solid rgba(255,255,255,0.06);
+    .sidebar.sidebar--open {
+        transform: translateX(0);
+    }
+
+    /* Show the in-drawer close (X) button on mobile */
+    .sidebar-close-btn {
+        display: flex;
     }
 
     article.content {
@@ -189,7 +231,7 @@ main {
     }
 }
 
-/* ===== Desktop (≥ 641px) ===== */
+/* ===== Desktop (≥ 641px): sticky side panel ===== */
 @media (min-width: 641px) {
     .page {
         flex-direction: row;
@@ -202,15 +244,17 @@ main {
         top: 0;
         overflow-y: auto;
         overflow-x: hidden;
+        flex-shrink: 0;
     }
 
-    /* Override Bootstrap `collapse` hidden state — nav must always be visible on desktop */
+    /* Nav is always visible on desktop regardless of collapseNavMenu state */
     .nav-scrollable {
         display: flex !important;
     }
 
-    .toggler-btn {
-        display: none;
+    main {
+        flex: 1;
+        overflow-x: hidden;
     }
 
     .top-row {
