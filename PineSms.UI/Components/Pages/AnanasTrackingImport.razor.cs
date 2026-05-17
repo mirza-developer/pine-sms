@@ -17,11 +17,6 @@ public partial class AnanasTrackingImport
     private string alertClass = "alert-info";
     private bool isLoading = false;
 
-    // Column indices (0-based) in the Excel file
-    // Col C (index 2) = بارکد, Col H (index 7) = کدفاکتور
-    private const int BarcodeColumnIndex = 2;
-    private const int OrderCodeColumnIndex = 7;
-
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         entries.Clear();
@@ -53,15 +48,30 @@ public partial class AnanasTrackingImport
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         using var reader = ExcelReaderFactory.CreateReader(ms);
 
-        // Skip header row
+        // Read header row and locate columns by name (trim whitespace)
         if (!reader.Read()) return;
 
-        // Collect all rows first to find the last row index
+        int barcodeColIdx = -1;
+        int orderCodeColIdx = -1;
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            var header = reader.GetValue(i)?.ToString()?.Trim();
+            if (header == "بارکد") barcodeColIdx = i;
+            else if (header == "کدفاکتور") orderCodeColIdx = i;
+        }
+
+        if (barcodeColIdx < 0 || orderCodeColIdx < 0)
+        {
+            NotificationService.ShowError("ستون‌های «بارکد» یا «کدفاکتور» در فایل یافت نشد");
+            return;
+        }
+
+        // Collect all data rows
         var rows = new List<(string orderCode, string barcode)>();
         while (reader.Read())
         {
-            var orderCodeRaw = reader.GetValue(OrderCodeColumnIndex)?.ToString()?.Trim();
-            var barcodeRaw = reader.GetValue(BarcodeColumnIndex)?.ToString()?.Trim();
+            var orderCodeRaw = reader.GetValue(orderCodeColIdx)?.ToString()?.Trim();
+            var barcodeRaw = reader.GetValue(barcodeColIdx)?.ToString()?.Trim();
 
             if (!string.IsNullOrEmpty(orderCodeRaw) && !string.IsNullOrEmpty(barcodeRaw))
                 rows.Add((orderCodeRaw, barcodeRaw));
