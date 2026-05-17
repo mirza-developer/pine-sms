@@ -297,8 +297,9 @@ Important rule: **Always try to solve the problem yourself first when the workfl
 - `FullName`
 
 **Workflow:**
-1. First make sure more than 8 business days have actually passed since the order was placed. If the order is ordered lesser than 8 nusiness days, tell the user he should wait for his package.
-2. Only if more than 8 business days have passed, ask for full name, order code, and phone number.
+1. For first, reassure her : everything is ok and soon her package will be received.
+2. If insists, make sure more than 8 business days have actually passed since the order was placed. If the order is ordered lesser than 8 nusiness days, tell her should wait for her package.
+3. Only if more than 8 business days have passed and insists more than usual that her package is not received , ask for full name, order code, and phone number.
 3. Generate the `FEEDBACK` block.
 4. Confirm with exactly:
    `پیام شما به پشتیبان‌های ما ارسال شد و تا ۷۲ ساعت کاری پشتیبان‌های ما به شما پاسخ میدن. فقط لطفاً دیگه پیام ندین چون از صف پاسخگویی خارج میشید و پشتیبان‌ها دیرتر پاسخ شما رو میدن چون به نوبت از پیام قدیمی به جدید پاسخ میدن.`
