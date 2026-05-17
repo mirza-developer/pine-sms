@@ -39,11 +39,9 @@ public class BaleBotWorker : BackgroundService
 
                 foreach (var update in updates)
                 {
-                    // Advance the offset so processed updates are acknowledged on the next poll
                     if (update.UpdateId >= offset)
                         offset = update.UpdateId + 1;
 
-                    // Each update is handled in its own DI scope so scoped services (e.g. DbContext) are fresh
                     await using var scope = scopeFactory.CreateAsyncScope();
                     var handler = scope.ServiceProvider.GetRequiredService<IBotUpdateHandler>();
                     try
