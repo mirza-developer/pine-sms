@@ -31,6 +31,7 @@ public class PineSmsDbContext : DbContext
     public DbSet<OrderStatus> OrderStatus { get; set; }
     public DbSet<CustomerOrder> CustomerOrder { get; set; }
     public DbSet<ApiKey> ApiKey { get; set; }
+    public DbSet<BotChatMessage> BotChatMessage { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,5 +69,13 @@ public class PineSmsDbContext : DbContext
             .HasIndex(k => k.Key)
             .IsUnique()
             .HasDatabaseName("IX_ApiKey_Key");
+
+        modelBuilder.Entity<BotChatMessage>()
+            .HasIndex(m => m.BaleUsername)
+            .HasDatabaseName("IX_BotChatMessage_BaleUsername");
+
+        modelBuilder.Entity<BotChatMessage>()
+            .HasIndex(m => m.SentAt)
+            .HasDatabaseName("IX_BotChatMessage_SentAt");
     }
 }

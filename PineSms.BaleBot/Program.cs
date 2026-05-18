@@ -60,11 +60,13 @@ try
     }
     else
         builder.Services.AddSingleton<IChatAgentService, ChatAgentService>();
+    builder.Services.AddSingleton<BotChatMessageQueue>();
     builder.Services.AddSingleton<ChatSessionStore>();
     builder.Services.AddSingleton<BaleBotClient>();
     builder.Services.AddScoped<IBotUpdateHandler, BotUpdateHandler>();
 
     builder.Services.AddHostedService<BaleBotWorker>();
+    builder.Services.AddHostedService<BotChatMessageSaverWorker>();
 
     var host = builder.Build();
 

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using PineSms.Core.Entities;
 using PineSms.Core.Features.Account;
 using PineSms.Core.Features.ApiKey;
+using PineSms.Core.Features.BotConversation;
 using PineSms.Core.Features.Customer;
 using PineSms.Core.Features.Order;
 using PineSms.Core.Features.Sms;
@@ -171,6 +172,13 @@ public class ApiClientService
         }
         var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
         return (false, error?.Message ?? "خطا در حذف");
+    }
+
+    // ── Bot Conversations ──────────────────────────────────────────────────
+    public async Task<List<BotChatMessageDto>?> GetBotConversationAsync(string username)
+    {
+        return await httpClient.GetFromJsonAsync<List<BotChatMessageDto>>(
+            $"api/bot/conversations?username={Uri.EscapeDataString(username)}");
     }
 }
 
