@@ -22,11 +22,19 @@ namespace PineSms.BaleBot.Services;
 /// </summary>
 public class BotUpdateHandler : IBotUpdateHandler
 {
+    private const string SupportWaitNotice = "\nلطفاً تا ۷۲ ساعت کاری آینده صبوری کنید. درخواست شما بررسی می‌شود. لطفاً دیگر پیام ندهید، پاسخ‌گویی بر اساس آخرین پیام‌ها انجام می‌شود.";
+
     private readonly BaleBotClient botClient;
     private readonly PineSmsDbContext dbContext;
     private readonly IChatAgentService agentService;
     private readonly ChatSessionStore sessionStore;
     private readonly ILogger<BotUpdateHandler> logger;
+    private readonly List<long> chatIds = new()
+    {
+        6318588996,5715522360,6215427121,6137308408,
+        5518881690,5000226193,5225037607,6178785306,
+        5477856928,5172013155,5249048339
+    };
 
     public BotUpdateHandler(
         BaleBotClient botClient,
@@ -49,6 +57,12 @@ public class BotUpdateHandler : IBotUpdateHandler
             return;
 
         var chatId = message.Chat.Id;
+
+        if (chatIds.Contains(message.Chat.Id))
+        {
+            return;
+        }
+
         var text = message.Text.Trim();
 
         logger.LogInformation("Update {UpdateId}: chat={ChatId}", update.UpdateId, chatId);
@@ -82,7 +96,8 @@ public class BotUpdateHandler : IBotUpdateHandler
                     statusLines.Add(
                         $"📦 سفارش «{order.OrderCode}»:\n" +
                         $"وضعیت: {order.OrderStatus.Title}\n" +
-                        $"آخرین به‌روزرسانی: {PersianCalendarTools.GregorianToPersian(order.UpdatedAt)} {order.UpdatedAt:HH:mm}");
+                        (!string.IsNullOrEmpty(order.PostalTrackingCode) ? $"کد مرسوله پستی: {order.PostalTrackingCode}\n" : "") +
+                        $" کد ۲۴ رقمیو بزن تو سایت پست https://tracking.post.ir/ از وضعیت بسته باخبر شو");
                 }
                 else
                 {
@@ -100,6 +115,11 @@ public class BotUpdateHandler : IBotUpdateHandler
 
             if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
                 await botClient.SendMessageAsync(chatId, visibleOrderCodes, ct);
+
+            // A FEEDBACK block may accompany the ORDER_CODE block (e.g. DelayedDelivery
+            // where the AI checks the order and escalates in the same turn). Process it too.
+            if (!string.IsNullOrEmpty(feedbackJson))
+                await HandleFeedbackAsync(chatId, feedbackJson, update.Message.From.Username, ct);
         }
         else if (!string.IsNullOrEmpty(feedbackJson))
         {
@@ -145,8 +165,8 @@ public class BotUpdateHandler : IBotUpdateHandler
         if (targetChatId == 0)
         {
             logger.LogWarning("Chat ID not configured for feedback type: {FeedbackType}", feedbackType);
-            await botClient.SendMessageAsync(userChatId, 
-                "✅ اطلاعات شما ثبت شد. به زودی پشتیبانی با شما تماس خواهد گرفت.", ct);
+            await botClient.SendMessageAsync(userChatId,
+                "✅ اطلاعات شما ثبت شد. پشتیبانی انسانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice, ct);
             return;
         }
 
@@ -195,6 +215,10 @@ public class BotUpdateHandler : IBotUpdateHandler
                 await HandleWrongSizeAsync(userChatId, targetChatId, root, userBaleUsername, ct);
                 break;
 
+            case "UnknownQuery":
+                await HandleUnknownQueryAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                break;
+
             default:
                 logger.LogWarning("Unhandled feedback type: {FeedbackType}", feedbackType);
                 break;
@@ -203,7 +227,10 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleSatisfactionAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSatisfactionSuccess = "🌸 پیام شما با موفقیت ثبت شد و به مدیریت ارسال گردید. از همراهی شما سپاسگزاریم.";
+        string messageSatisfactionSuccess = """
+            مبارکتون باشه. خوشحالیم تونستیم پاسخ اعتمادتون رو بدیم. به امید دیدار مجدد در خرید های بعدی
+            """;
+
         await botClient.SendMessageAsync(userChatId, messageSatisfactionSuccess, ct);
 
         string orderCode = root.TryGetProperty("OrderCode", out var ocProp) ? ocProp.GetString() : "نامشخص";
@@ -219,7 +246,7 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageComplaintSuccess = "📣 اطلاعات شما ثبت شد:\nپشتیبانی ما در اسرع وقت با شما تماس خواهد گرفت.";
+        string messageComplaintSuccess = "📣 اطلاعات شما ثبت شد:\nپشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageComplaintSuccess, ct);
 
         var orderCode = root.GetProperty("OrderCode").GetString();
@@ -256,16 +283,18 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleDefectiveProductAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در اسرع وقت با شما تماس خواهد گرفت.";
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var description = root.GetProperty("Description").GetString();
         bool hasPhoto = root.TryGetProperty("HasPhoto", out var photoEl) && photoEl.GetBoolean();
 
         string defectiveLog = $"⚠️ گزارش محصول معیوب/خراب:\n" +
             $"کد سفارش: {orderCode}\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
             $"شماره تماس: {phoneNumber}\n" +
             $"توضیحات: {description}\n" +
             $"عکس ارسال شده: {(hasPhoto ? "بله" : "خیر")}\n";
@@ -278,15 +307,17 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandlePhotoMismatchAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در اسرع وقت با شما تماس خواهد گرفت.";
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var description = root.GetProperty("Description").GetString();
 
         string mismatchLog = $"📸 گزارش مغایرت عکس و محصول:\n" +
             $"کد سفارش: {orderCode}\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
             $"شماره تماس: {phoneNumber}\n" +
             $"توضیحات: {description}\n";
 
@@ -298,15 +329,17 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleReturnedPackageAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در اسرع وقت با شما تماس خواهد گرفت.";
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var trackingCode = root.GetProperty("TrackingCode").GetString();
 
         string returnedLog = $"📦 گزارش بسته برگشت خورده:\n" +
             $"کد سفارش: {orderCode}\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
             $"شماره تماس: {phoneNumber}\n" +
             $"کد رهگیری پست: {trackingCode}\n";
 
@@ -318,13 +351,15 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleWholesaleAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ درخواست عمده شما ثبت شد. به زودی با شما تماس گرفته خواهد شد.";
+        string messageSuccess = "✅ درخواست عمده شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var description = root.GetProperty("Description").GetString();
 
         string wholesaleLog = $"📦 درخواست سفارش عمده جدید:\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
             $"شماره تماس: {phoneNumber}\n" +
             $"توضیحات: {description}" +
             userBaleUsername + "\n #wholesale";
@@ -334,7 +369,7 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleNoOrderCodeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما کد سفارش شما را پیدا کرده و به شما اطلاع خواهد داد.";
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از بررسی در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var fullName = root.GetProperty("FullName").GetString();
@@ -354,15 +389,17 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleFailedPaymentAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در اسرع وقت موضوع را بررسی خواهد کرد.";
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از بررسی در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var orderAmount = root.GetProperty("OrderAmount").GetString();
         var paymentDate = root.GetProperty("PaymentDate").GetString();
         var description = root.GetProperty("Description").GetString();
 
         string failedPaymentLog = $"💳 گزارش پرداخت ناموفق:\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
             $"شماره تماس: {phoneNumber}\n" +
             $"مبلغ: {orderAmount}\n" +
             $"تاریخ پرداخت: {paymentDate}\n" +
@@ -374,19 +411,17 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleDelayedDeliveryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پیگیری لازم را انجام خواهد داد.";
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از پیگیری در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
         var fullName = root.GetProperty("FullName").GetString();
-        var postalCode = root.GetProperty("PostalCode").GetString();
 
         string delayedLog = $"⏰ گزارش تاخیر در تحویل (بالای ۸ روز کاری):\n" +
             $"کد سفارش: {orderCode}\n" +
             $"نام و نام خانوادگی: {fullName}\n" +
-            $"شماره تماس: {phoneNumber}\n" +
-            $"کد پستی: {postalCode}\n";
+            $"شماره تماس: {phoneNumber}\n";
 
         var order = await LookupOrderAsync(orderCode, ct);
         delayedLog += order + userBaleUsername + "\n #delayed";
@@ -396,15 +431,17 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleWrongSizeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
     {
-        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در اسرع وقت با شما تماس خواهد گرفت.";
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var description = root.GetProperty("Description").GetString();
 
         string wrongSizeLog = $"📏 گزارش سایز نامناسب:\n" +
             $"کد سفارش: {orderCode}\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
             $"شماره تماس: {phoneNumber}\n" +
             $"توضیحات: {description}\n";
 
@@ -414,10 +451,28 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, wrongSizeLog, ct);
     }
 
+    private async Task HandleUnknownQueryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    {
+        string messageSuccess = "✅ پیام شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
+        await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
+        var description = root.TryGetProperty("Description", out var descProp) ? descProp.GetString() : "";
+
+        string unknownLog = $"❓ درخواست نامشخص:\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
+            $"توضیحات: {description}" +
+            userBaleUsername + "\n #unknown";
+
+        await botClient.SendMessageAsync(targetChatId, unknownLog, ct);
+    }
+
     private async Task<string> LookupOrderAsync(string? orderCode, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(orderCode))
             return "";
+
+        orderCode = ResponseBlockTools.NormalizeDigits(orderCode);
 
         var order = await dbContext.CustomerOrder
             .Include(o => o.OrderStatus)
@@ -426,9 +481,10 @@ public class BotUpdateHandler : IBotUpdateHandler
         if (order is not null)
         {
             return "\n" +
-                $"📦 سفارش «{order.OrderCode}»:\n" +
-                $"وضعیت: {order.OrderStatus.Title}\n" +
-                $"آخرین به‌روزرسانی: {PersianCalendarTools.GregorianToPersian(order.UpdatedAt)} {order.UpdatedAt:HH:mm}";
+                 $"📦 سفارش «{order.OrderCode}»:\n" +
+                        $"وضعیت: {order.OrderStatus.Title}\n" +
+                        (!string.IsNullOrEmpty(order.PostalTrackingCode) ? $"کد مرسوله پستی: {order.PostalTrackingCode}\n" : "") +
+                        $" کد ۲۴ رقمیو بزن تو سایت پست https://tracking.post.ir/ از وضعیت بسته باخبر شو";
         }
         else
         {

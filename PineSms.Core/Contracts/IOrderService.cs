@@ -9,4 +9,5 @@ public interface IOrderService
     Task<List<OrderStatus>> GetAllOrderStatuses();
     Task<(bool success, string message)> UpsertOrderStatus(UpsertOrderStatusCommand command);
     Task<(bool success, string message)> DeleteOrderStatus(int id);
+    Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command);
 }

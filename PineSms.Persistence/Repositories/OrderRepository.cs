@@ -157,6 +157,35 @@ public class OrderRepository : IOrderService
         return (true, "وضعیت سفارش حذف شد");
     }
 
+    public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)
+    {
+        var result = new BulkUpdateTrackingResult();
+
+        foreach (var entry in command.Entries)
+        {
+            var order = await dbContext.CustomerOrder.FirstOrDefaultAsync(o => o.OrderCode == entry.OrderCode);
+            if (order is null)
+            {
+                result.NotFoundCodes.Add(entry.OrderCode);
+                result.NotFoundCount++;
+            }
+            else
+            {
+                order.PostalTrackingCode = entry.PostalTrackingCode;
+                order.UpdatedAt = DateTime.Now;
+                result.UpdatedCount++;
+            }
+        }
+
+        if (result.UpdatedCount > 0)
+            await dbContext.SaveChangesAsync();
+
+        result.Success = true;
+        result.Message = $"{result.UpdatedCount} سفارش به‌روزرسانی شد" +
+                         (result.NotFoundCount > 0 ? $"، {result.NotFoundCount} کد یافت نشد" : "");
+        return result;
+    }
+
     private static string NormalizePhoneNumber(string phone)
     {
         phone = phone.Trim();

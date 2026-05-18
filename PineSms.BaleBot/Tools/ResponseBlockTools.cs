@@ -48,7 +48,7 @@ public static class ResponseBlockTools
                 .Trim();
 
             if (collectedOrderCodes is not null && content.Length > 0)
-                collectedOrderCodes.Add(content);
+                collectedOrderCodes.Add(NormalizeDigits(content));
 
             var blockLength = (blockEnd + BlockEnd.Length) - blockStart;
             text = text.Remove(blockStart, blockLength);
@@ -99,5 +99,26 @@ public static class ResponseBlockTools
         }
 
         return text.Trim();
+    }
+
+    /// <summary>
+    /// Converts Persian (۰–۹) and Arabic-Indic (٠–٩) digits to ASCII digits (0–9).
+    /// </summary>
+    public static string NormalizeDigits(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+
+        var chars = value.ToCharArray();
+        for (var i = 0; i < chars.Length; i++)
+        {
+            // Persian-Indic: U+06F0–U+06F9
+            if (chars[i] >= '\u06F0' && chars[i] <= '\u06F9')
+                chars[i] = (char)(chars[i] - '\u06F0' + '0');
+            // Arabic-Indic: U+0660–U+0669
+            else if (chars[i] >= '\u0660' && chars[i] <= '\u0669')
+                chars[i] = (char)(chars[i] - '\u0660' + '0');
+        }
+        return new string(chars);
     }
 }

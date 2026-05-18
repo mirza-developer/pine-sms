@@ -1,13 +1,6 @@
 @page "/"
 
 <div class="container-fluid px-3 px-md-4 mt-4">
-    <div class="mb-4">
-        <h4 class="fw-bold text-primary mb-1">
-            <span class="bi bi-tree-fill me-2"></span>خوش آمدید، @AuthState.PersianName
-        </h4>
-        <p class="text-muted mb-0">سیستم مدیریت پیامک PineSms</p>
-    </div>
-    <hr class="mb-4" />
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
         <div class="col">
             <div class="card h-100 text-center shadow-sm border-0">
@@ -42,6 +35,18 @@
                     <h5 class="card-title fw-semibold">ارسال پیامک</h5>
                     <p class="card-text text-muted small">ارسال پیامک انبوه به مشتریان</p>
                     <a href="/sms/send" class="btn btn-primary btn-sm px-4">شروع</a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 text-center shadow-sm border-0">
+                <div class="card-body py-4">
+                    <div class="mb-3">
+                        <span class="bi bi-box-seam-fill text-warning" style="font-size:2.5rem;"></span>
+                    </div>
+                    <h5 class="card-title fw-semibold">بارکد پستی </h5>
+                    <p class="card-text text-muted small">ورود کدهای رهگیری پستی از فایل اکسل </p>
+                    <a href="/order/ananas-tracking" class="btn btn-warning btn-sm px-4">شروع</a>
                 </div>
             </div>
         </div>

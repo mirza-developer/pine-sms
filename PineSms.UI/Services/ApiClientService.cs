@@ -113,6 +113,12 @@ public class ApiClientService
         return await httpClient.GetFromJsonAsync<SmsSendJobDto>($"api/sms/jobs/{id}");
     }
 
+    public async Task<BulkUpdateTrackingResult?> BulkUpdateTrackingAsync(BulkUpdateTrackingCommand command)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/order/bulk-tracking", command);
+        return await response.Content.ReadFromJsonAsync<BulkUpdateTrackingResult>();
+    }
+
     // ── Order Statuses ──────────────────────────────────────────────────────
     public async Task<List<OrderStatus>?> GetOrderStatusesAsync()
     {
