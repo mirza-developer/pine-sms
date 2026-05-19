@@ -42,7 +42,7 @@ public class BotConversationRepository : IBotConversationService
             .Select(g => new BotUserSummaryDto
             {
                 BaleUsername = g.Key,
-                ChatId = g.Max(m => m.ChatId),
+                ChatId = g.First().ChatId,
                 LastMessageAt = g.Max(m => m.SentAt),
                 MessageCount = g.Count()
             })

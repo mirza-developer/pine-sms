@@ -10,9 +10,16 @@ namespace PineSms.BaleBot.Services;
 /// </summary>
 public sealed class BotChatMessageQueue
 {
+    /// <summary>
+    /// Maximum number of messages that can be buffered before the oldest entry is
+    /// silently dropped. 10 000 covers several minutes of very high traffic without
+    /// consuming significant memory (~1 KB per entry ≈ 10 MB worst-case).
+    /// </summary>
+    private const int ChannelCapacity = 10_000;
+
     private readonly Channel<BotChatMessageEntry> channel =
         Channel.CreateBounded<BotChatMessageEntry>(
-            new BoundedChannelOptions(10_000)
+            new BoundedChannelOptions(ChannelCapacity)
             {
                 FullMode = BoundedChannelFullMode.DropOldest,
                 SingleReader = true,
