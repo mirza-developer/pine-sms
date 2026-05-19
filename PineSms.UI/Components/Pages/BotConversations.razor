@@ -10,24 +10,32 @@
 
 <div class="container-fluid px-3 px-md-4 mt-4">
     <div class="page-header d-flex justify-content-between align-items-center">
-        <h4><span class="bi bi-chat-dots-fill me-2 text-primary"></span>مکالمات ربات بله</h4>
+        <h4>
+            @if (selectedUsername is not null)
+            {
+                <button class="btn btn-link p-0 me-2 text-secondary" @onclick="BackToGrid" title="بازگشت">
+                    <span class="bi bi-arrow-right-circle-fill fs-5"></span>
+                </button>
+            }
+            <span class="bi bi-chat-dots-fill me-2 text-primary"></span>مکالمات ربات بله
+        </h4>
     </div>
 
+    @* ── Search bar ─────────────────────────────────────────── *@
     <div class="card shadow-sm mt-3">
-        <div class="card-body">
+        <div class="card-body py-2">
             <div class="row g-2 align-items-end">
-                <div class="col-12 col-md-6">
-                    <label class="form-label fw-semibold">نام کاربری بله (بدون @@)</label>
+                <div class="col-12 col-md-7">
                     <input type="text"
                            class="form-control"
-                           placeholder="مثال: john_doe"
+                           placeholder="جستجوی نام کاربری بله (بدون @@)…"
                            value="@searchUsername"
                            @oninput="e => searchUsername = e.Value?.ToString() ?? string.Empty"
                            @onkeydown="OnSearchKeyDown" />
                 </div>
                 <div class="col-12 col-md-3">
-                    <button class="btn btn-primary w-100" @onclick="LoadConversation" disabled="@isLoading">
-                        @if (isLoading)
+                    <button class="btn btn-primary w-100" @onclick="HandleSearch" disabled="@isChatLoading">
+                        @if (isChatLoading)
                         {
                             <span class="spinner-border spinner-border-sm me-1"></span>
                         }
@@ -38,22 +46,26 @@
         </div>
     </div>
 
-    @if (hasSearched && !isLoading)
+    @* ── Chat view ──────────────────────────────────────────── *@
+    @if (selectedUsername is not null)
     {
-        @if (messages.Count == 0)
+        @if (isChatLoading)
+        {
+            <div class="text-center mt-4"><span class="spinner-border text-primary"></span></div>
+        }
+        else if (messages.Count == 0)
         {
             <div class="alert alert-info mt-3">
                 <span class="bi bi-info-circle me-1"></span>
-                هیچ مکالمه‌ای برای نام کاربری «@lastSearchedUsername» یافت نشد.
+                هیچ مکالمه‌ای برای «@selectedUsername» یافت نشد.
             </div>
         }
         else
         {
-            <div class="mt-3 mb-1 small text-muted">
+            <div class="mt-2 mb-1 small text-muted">
                 <span class="bi bi-person-fill me-1"></span>
-                مکالمات کاربر «<strong>@lastSearchedUsername</strong>» — @messages.Count پیام
+                مکالمات «<strong>@selectedUsername</strong>» — @messages.Count پیام
             </div>
-
             <div class="chat-container">
                 @foreach (var msg in messages)
                 {
@@ -78,9 +90,103 @@
             </div>
         }
     }
+    else
+    {
+        @* ── User-summary grid ───────────────────────────────── *@
+        @if (isGridLoading)
+        {
+            <div class="text-center mt-4"><span class="spinner-border text-primary"></span></div>
+        }
+        else if (currentPage is not null)
+        {
+            <div class="card shadow-sm mt-3">
+                @if (currentPage.Items.Count == 0)
+                {
+                    <div class="card-body">
+                        <div class="text-muted text-center py-3">هنوز هیچ مکالمه‌ای ثبت نشده است.</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>نام کاربری بله</th>
+                                    <th>آخرین پیام</th>
+                                    <th>تعداد پیام</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    int rowStart = (currentPage.Page - 1) * currentPage.PageSize + 1;
+                                }
+                                @foreach (var (item, idx) in currentPage.Items.Select((s, i) => (s, i)))
+                                {
+                                    <tr class="cursor-pointer" @onclick="() => OpenChat(item.BaleUsername)">
+                                        <td class="text-muted small align-middle">@(rowStart + idx)</td>
+                                        <td class="align-middle fw-semibold">
+                                            <span class="bi bi-person-circle me-1 text-primary"></span>@item.BaleUsername
+                                        </td>
+                                        <td class="align-middle">
+                                            @PersianDateHelper.ToPersianDate(item.LastMessageAt)
+                                            <span class="text-muted small ms-1">@item.LastMessageAt.ToLocalTime().ToString("HH:mm")</span>
+                                        </td>
+                                        <td class="align-middle">
+                                            <span class="badge bg-secondary rounded-pill">@item.MessageCount</span>
+                                        </td>
+                                        <td class="align-middle text-end">
+                                            <button class="btn btn-outline-primary btn-sm" @onclick:stopPropagation="true" @onclick="() => OpenChat(item.BaleUsername)">
+                                                <span class="bi bi-chat-text me-1"></span>مشاهده
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @* Pagination *@
+                    <div class="card-footer d-flex justify-content-between align-items-center py-2">
+                        <small class="text-muted">
+                            صفحه @currentPage.Page از @currentPage.TotalPages
+                            (@currentPage.TotalCount کاربر)
+                        </small>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @onclick="PrevPage"
+                                    disabled="@(currentPage.Page <= 1 || isGridLoading)">
+                                <span class="bi bi-chevron-right"></span>
+                            </button>
+                            @for (int p = Math.Max(1, currentPage.Page - 2);
+                                  p <= Math.Min(currentPage.TotalPages, currentPage.Page + 2);
+                                  p++)
+                            {
+                                var pageNum = p;
+                                <button class="btn btn-sm @(pageNum == currentPage.Page ? "btn-primary" : "btn-outline-secondary")"
+                                        @onclick="() => GoToPage(pageNum)"
+                                        disabled="@isGridLoading">
+                                    @pageNum
+                                </button>
+                            }
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @onclick="NextPage"
+                                    disabled="@(currentPage.Page >= currentPage.TotalPages || isGridLoading)">
+                                <span class="bi bi-chevron-left"></span>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
 </div>
 
 <style>
+    .cursor-pointer { cursor: pointer; }
+
     .chat-container {
         max-height: 65vh;
         overflow-y: auto;

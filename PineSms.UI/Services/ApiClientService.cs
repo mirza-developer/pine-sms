@@ -180,6 +180,12 @@ public class ApiClientService
         return await httpClient.GetFromJsonAsync<List<BotChatMessageDto>>(
             $"api/bot/conversations?username={Uri.EscapeDataString(username)}");
     }
+
+    public async Task<BotUserSummaryPageResult?> GetBotUserSummariesAsync(int page, int pageSize = 10)
+    {
+        return await httpClient.GetFromJsonAsync<BotUserSummaryPageResult>(
+            $"api/bot/user-summaries?page={page}&pageSize={pageSize}");
+    }
 }
 
 public class MessageResponse

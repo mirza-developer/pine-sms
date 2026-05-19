@@ -29,4 +29,15 @@ public class BotController : ControllerBase
         var messages = await botConversationService.GetConversationAsync(username.Trim());
         return Ok(messages);
     }
+
+    /// <summary>
+    /// Returns a paginated list of unique Bale usernames with latest message date and message count.
+    /// </summary>
+    [HttpGet("user-summaries")]
+    public async Task<IActionResult> GetUserSummaries([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    {
+        if (pageSize is < 1 or > 100) pageSize = 10;
+        var result = await botConversationService.GetUserSummariesPagedAsync(page, pageSize);
+        return Ok(result);
+    }
 }
