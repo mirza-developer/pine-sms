@@ -157,8 +157,7 @@ public class OrderRepository : IOrderService
         return (true, "وضعیت سفارش حذف شد");
     }
 
-    public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)
-    {
+    public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)    {
         var result = new BulkUpdateTrackingResult();
 
         foreach (var entry in command.Entries)
@@ -184,6 +183,28 @@ public class OrderRepository : IOrderService
         result.Message = $"{result.UpdatedCount} سفارش به‌روزرسانی شد" +
                          (result.NotFoundCount > 0 ? $"، {result.NotFoundCount} کد یافت نشد" : "");
         return result;
+    }
+
+    public async Task<TrackOrderResult> GetOrderByCode(string orderCode)
+    {
+        if (orderCode.StartsWith("wc-"))
+            orderCode = orderCode.Replace("wc-", "");
+
+        var order = await dbContext.CustomerOrder
+            .Include(o => o.OrderStatus)
+            .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
+
+        if (order is null)
+            return new TrackOrderResult { Found = false };
+
+        return new TrackOrderResult
+        {
+            Found = true,
+            OrderCode = order.OrderCode,
+            StatusTitle = order.OrderStatus.Title,
+            PostalTrackingCode = order.PostalTrackingCode,
+            UpdatedAt = order.UpdatedAt
+        };
     }
 
     private static string NormalizePhoneNumber(string phone)

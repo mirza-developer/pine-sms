@@ -21,6 +21,16 @@ public class OrderController : ControllerBase
         this.orderNotifyQueue = orderNotifyQueue;
     }
 
+    [HttpGet("track/{orderCode}")]
+    [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
+    public async Task<IActionResult> Track(string orderCode)
+    {
+        var result = await orderService.GetOrderByCode(orderCode);
+        if (!result.Found)
+            return NotFound(new ResponseDto { Success = false, Message = "سفارشی با این کد یافت نشد" });
+        return Ok(result);
+    }
+
     /// <summary>
     /// Notify PineSms of a new or updated customer order.
     /// Authenticate using the X-Api-Key header with a valid API key.
