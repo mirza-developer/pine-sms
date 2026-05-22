@@ -68,6 +68,7 @@ try
 
     builder.Services.AddHostedService<BaleBotWorker>();
     builder.Services.AddHostedService<BotChatMessageSaverWorker>();
+    builder.Services.AddHostedService<PhotoMessageStoreCleanupWorker>();
 
     var host = builder.Build();
 

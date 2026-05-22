@@ -104,15 +104,28 @@ public class BotUpdateHandler : IBotUpdateHandler
                 message.MessageId, chatId, bestPhoto.FileId);
         }
 
+        // A photo-only message (no text, no caption) is stored above and nothing else.
+        // We must NOT forward it to the AI — the user may be sending several photos in a row
+        // and each would independently trigger an AI response, causing TakePhotos() to drain
+        // the store prematurely so later photos are never forwarded to support.
+        if (hasPhoto && !hasText && !hasCaption)
+            return;
+
         // Build the text that will be forwarded to the AI.
-        // If the user sent only a photo (no text or caption), inject a placeholder.
+        // For a photo+caption message the photo is already stored above, so we pass only
+        // the raw caption — no wrapper prefix — to avoid confusing the AI into thinking
+        // it needs to handle a fresh photo separately from the ones already queued.
         string text;
         if (hasText)
             text = message.Text!.Trim();
-        else if (hasCaption)
-            text = $"[کاربر یک تصویر با توضیح زیر ارسال کرد]\n{message.Caption!.Trim()}";
         else
-            text = "[کاربر یک تصویر ارسال کرد]";
+            text = message.Caption!.Trim();
+
+        // If the user has queued photos that the AI does not yet know about, append a
+        // system note so the AI sets HasPhoto:true in the FEEDBACK block.
+        var pendingPhotoCount = photoMessageStore.PeekPhotos(chatId).Count;
+        if (pendingPhotoCount > 0)
+            text += $"\n[سیستم: کاربر {pendingPhotoCount} تصویر ارسال کرده است]";
 
         // Enqueue user message for background persistence (fire-and-forget)
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, chatId, text, IsFromBot: false, DateTime.UtcNow));
@@ -222,7 +235,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         if (targetChatId == 0)
         {
             logger.LogWarning("Chat ID not configured for feedback type: {FeedbackType}", feedbackType);
-            const string unconfiguredMsg = "✅ اطلاعات شما ثبت شد. پشتیبانی انسانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
+            const string unconfiguredMsg = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
             await botClient.SendMessageAsync(userChatId, unconfiguredMsg, ct);
             chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, unconfiguredMsg, IsFromBot: true, DateTime.UtcNow));
             return;
@@ -365,13 +378,14 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         await botClient.SendMessageAsync(targetChatId, defectiveLog, ct);
 
-        // Forward the user's photo to the support chat when the AI confirmed one was received
+        // Forward the user's photo(s) to the support chat when the AI confirmed one was received
         if (hasPhoto)
         {
-            var storedMessageId = photoMessageStore.TakePhoto(userChatId);
-            if (storedMessageId.HasValue)
+            var storedMessageIds = photoMessageStore.TakePhotos(userChatId);
+            if (storedMessageIds.Count > 0)
             {
-                await botClient.ForwardMessageAsync(targetChatId, userChatId, storedMessageId.Value, ct);
+                foreach (var msgId in storedMessageIds)
+                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, ct);
             }
             else
             {
@@ -390,17 +404,34 @@ public class BotUpdateHandler : IBotUpdateHandler
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
         var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var description = root.GetProperty("Description").GetString();
+        bool hasPhoto = root.TryGetProperty("HasPhoto", out var photoEl) && photoEl.GetBoolean();
 
         string mismatchLog = $"📸 گزارش مغایرت عکس و محصول:\n" +
             $"کد سفارش: {orderCode}\n" +
             $"نام و نام خانوادگی: {fullName}\n" +
             $"شماره تماس: {phoneNumber}\n" +
-            $"توضیحات: {description}\n";
+            $"توضیحات: {description}\n" +
+            $"عکس ارسال شده: {(hasPhoto ? "بله" : "خیر")}\n";
 
         var order = await LookupOrderAsync(orderCode, ct);
         mismatchLog += order + userBaleUsername + "\n #mismatch";
 
         await botClient.SendMessageAsync(targetChatId, mismatchLog, ct);
+
+        // Forward the user's photo(s) to the support chat when the AI confirmed one was received
+        if (hasPhoto)
+        {
+            var storedMessageIds = photoMessageStore.TakePhotos(userChatId);
+            if (storedMessageIds.Count > 0)
+            {
+                foreach (var msgId in storedMessageIds)
+                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, ct);
+            }
+            else
+            {
+                logger.LogWarning("HasPhoto=true for PhotoMismatch but no stored photo found for chat {ChatId}", userChatId);
+            }
+        }
     }
 
     private async Task HandleReturnedPackageAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
