@@ -28,6 +28,7 @@ public class BotUpdateHandler : IBotUpdateHandler
     private readonly PineSmsDbContext dbContext;
     private readonly IChatAgentService agentService;
     private readonly ChatSessionStore sessionStore;
+    private readonly BotChatMessageQueue chatMessageQueue;
     private readonly ILogger<BotUpdateHandler> logger;
     private readonly List<long> chatIds = new()
     {
@@ -41,12 +42,14 @@ public class BotUpdateHandler : IBotUpdateHandler
         PineSmsDbContext dbContext,
         IChatAgentService agentService,
         ChatSessionStore sessionStore,
+        BotChatMessageQueue chatMessageQueue,
         ILogger<BotUpdateHandler> logger)
     {
         this.botClient = botClient;
         this.dbContext = dbContext;
         this.agentService = agentService;
         this.sessionStore = sessionStore;
+        this.chatMessageQueue = chatMessageQueue;
         this.logger = logger;
     }
 
@@ -64,8 +67,25 @@ public class BotUpdateHandler : IBotUpdateHandler
         }
 
         var text = message.Text.Trim();
+        var username = message.From?.Username;
+
+        if (string.IsNullOrEmpty(username))
+        {
+            await botClient.SendMessageAsync(chatId, """
+                همراه عزیز مزون آناناس
+                نام کاربری (آیدی) بله شما در دسترس نیست
+                جهت امکان پذیر شدن ارتباط با شما
+                لطفا نام کاربری (آیدی) خود را ست کنید
+                یا اگر ست کرده اید، در دسترسی عمومی قرار دهید
+                """, ct);
+
+            return;
+        }
 
         logger.LogInformation("Update {UpdateId}: chat={ChatId}", update.UpdateId, chatId);
+
+        // Enqueue user message for background persistence (fire-and-forget)
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, chatId, text, IsFromBot: false, DateTime.UtcNow));
 
         // /start → reset session so user always gets a fresh greeting
         if (text.Equals("/start", StringComparison.OrdinalIgnoreCase))
@@ -114,30 +134,37 @@ public class BotUpdateHandler : IBotUpdateHandler
                 visibleOrderCodes = statusBlock;
 
             if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
-                await botClient.SendMessageAsync(chatId, visibleOrderCodes, ct);
+                await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
 
             // A FEEDBACK block may accompany the ORDER_CODE block (e.g. DelayedDelivery
             // where the AI checks the order and escalates in the same turn). Process it too.
             if (!string.IsNullOrEmpty(feedbackJson))
-                await HandleFeedbackAsync(chatId, feedbackJson, update.Message.From.Username, ct);
+                await HandleFeedbackAsync(chatId, feedbackJson, username, ct);
         }
         else if (!string.IsNullOrEmpty(feedbackJson))
         {
-            await HandleFeedbackAsync(chatId, feedbackJson, update.Message.From.Username, ct);
+            await HandleFeedbackAsync(chatId, feedbackJson, username, ct);
         }
         else
         {
-            await botClient.SendMessageAsync(chatId, visibleOrderCodes, ct);
+            await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
         }
+    }
+
+    /// <summary>Sends a bot reply to the user and enqueues it for background persistence.</summary>
+    private async Task SendAndEnqueueBotReplyAsync(long userChatId, string username, string text, CancellationToken ct)
+    {
+        await botClient.SendMessageAsync(userChatId, text, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, text, IsFromBot: true, DateTime.UtcNow));
     }
 
     private async Task HandleFeedbackAsync(long userChatId, string feedbackJson, string username, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(username))
         {
-            await botClient.SendMessageAsync(userChatId,
-                "دوست عزیز مزون آناناس، لطفاً نام کاربری خود را در بله تنظیم کنید و در دسترس قرار دهید تا بتوانیم به شما پاسخ دهیم.", ct);
-
+            const string noUsernameMsg = "دوست عزیز مزون آناناس، لطفاً نام کاربری خود را در بله تنظیم کنید و در دسترس قرار دهید تا بتوانیم به شما پاسخ دهیم.";
+            await botClient.SendMessageAsync(userChatId, noUsernameMsg, ct);
+            chatMessageQueue.TryEnqueue(new BotChatMessageEntry(userChatId.ToString(), userChatId, noUsernameMsg, IsFromBot: true, DateTime.UtcNow));
             return;
         }
 
@@ -165,8 +192,9 @@ public class BotUpdateHandler : IBotUpdateHandler
         if (targetChatId == 0)
         {
             logger.LogWarning("Chat ID not configured for feedback type: {FeedbackType}", feedbackType);
-            await botClient.SendMessageAsync(userChatId,
-                "✅ اطلاعات شما ثبت شد. پشتیبانی انسانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice, ct);
+            const string unconfiguredMsg = "✅ اطلاعات شما ثبت شد. پشتیبانی انسانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
+            await botClient.SendMessageAsync(userChatId, unconfiguredMsg, ct);
+            chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, unconfiguredMsg, IsFromBot: true, DateTime.UtcNow));
             return;
         }
 
@@ -176,47 +204,47 @@ public class BotUpdateHandler : IBotUpdateHandler
         switch (feedbackType)
         {
             case "Satisfaction":
-                await HandleSatisfactionAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleSatisfactionAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "Complaint":
-                await HandleComplaintAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleComplaintAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "DefectiveProduct":
-                await HandleDefectiveProductAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleDefectiveProductAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "PhotoMismatch":
-                await HandlePhotoMismatchAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandlePhotoMismatchAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "ReturnedPackage":
-                await HandleReturnedPackageAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleReturnedPackageAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "Wholesale":
-                await HandleWholesaleAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleWholesaleAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "NoOrderCode":
-                await HandleNoOrderCodeAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleNoOrderCodeAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "FailedPayment":
-                await HandleFailedPaymentAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleFailedPaymentAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "DelayedDelivery":
-                await HandleDelayedDeliveryAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleDelayedDeliveryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "WrongSize":
-                await HandleWrongSizeAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleWrongSizeAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             case "UnknownQuery":
-                await HandleUnknownQueryAsync(userChatId, targetChatId, root, userBaleUsername, ct);
+                await HandleUnknownQueryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             default:
@@ -225,13 +253,14 @@ public class BotUpdateHandler : IBotUpdateHandler
         }
     }
 
-    private async Task HandleSatisfactionAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleSatisfactionAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSatisfactionSuccess = """
             مبارکتون باشه. خوشحالیم تونستیم پاسخ اعتمادتون رو بدیم. به امید دیدار مجدد در خرید های بعدی
             """;
 
         await botClient.SendMessageAsync(userChatId, messageSatisfactionSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSatisfactionSuccess, IsFromBot: true, DateTime.UtcNow));
 
         string orderCode = root.TryGetProperty("OrderCode", out var ocProp) ? ocProp.GetString() : "نامشخص";
         string description = root.TryGetProperty("Description", out var descProp) ? descProp.GetString() : "";
@@ -244,10 +273,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, satisfactionLog, ct);
     }
 
-    private async Task HandleComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageComplaintSuccess = "📣 اطلاعات شما ثبت شد:\nپشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageComplaintSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageComplaintSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
@@ -281,10 +311,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, complaintLog, ct);
     }
 
-    private async Task HandleDefectiveProductAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleDefectiveProductAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
@@ -305,10 +336,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, defectiveLog, ct);
     }
 
-    private async Task HandlePhotoMismatchAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandlePhotoMismatchAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
@@ -327,10 +359,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, mismatchLog, ct);
     }
 
-    private async Task HandleReturnedPackageAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleReturnedPackageAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
@@ -349,10 +382,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, returnedLog, ct);
     }
 
-    private async Task HandleWholesaleAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleWholesaleAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ درخواست عمده شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
         var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
@@ -367,10 +401,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, wholesaleLog, ct);
     }
 
-    private async Task HandleNoOrderCodeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleNoOrderCodeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از بررسی در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var fullName = root.GetProperty("FullName").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
@@ -387,10 +422,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, noCodeLog, ct);
     }
 
-    private async Task HandleFailedPaymentAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleFailedPaymentAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از بررسی در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
         var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
@@ -409,10 +445,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, failedPaymentLog, ct);
     }
 
-    private async Task HandleDelayedDeliveryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleDelayedDeliveryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از پیگیری در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
@@ -429,10 +466,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, delayedLog, ct);
     }
 
-    private async Task HandleWrongSizeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleWrongSizeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var orderCode = root.GetProperty("OrderCode").GetString();
         var phoneNumber = root.GetProperty("PhoneNumber").GetString();
@@ -451,10 +489,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         await botClient.SendMessageAsync(targetChatId, wrongSizeLog, ct);
     }
 
-    private async Task HandleUnknownQueryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, CancellationToken ct)
+    private async Task HandleUnknownQueryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
         string messageSuccess = "✅ پیام شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
         var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
         var description = root.TryGetProperty("Description", out var descProp) ? descProp.GetString() : "";

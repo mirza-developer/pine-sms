@@ -31,6 +31,7 @@ public static class PersistenceServices
 
         services.AddScoped<IOrderService, OrderRepository>();
         services.AddScoped<IApiKeyService, ApiKeyRepository>();
+        services.AddScoped<IBotConversationService, BotConversationRepository>();
 
         services.AddScoped<IBaleMessengerService, BaleMessengerService>();
 
