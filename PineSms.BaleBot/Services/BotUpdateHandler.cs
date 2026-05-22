@@ -67,7 +67,20 @@ public class BotUpdateHandler : IBotUpdateHandler
         }
 
         var text = message.Text.Trim();
-        var username = message.From?.Username ?? chatId.ToString();
+        var username = message.From?.Username;
+
+        if (string.IsNullOrEmpty(username))
+        {
+            await botClient.SendMessageAsync(chatId, """
+                همراه عزیز مزون آناناس
+                نام کاربری (آیدی) بله شما در دسترس نیست
+                جهت امکان پذیر شدن ارتباط با شما
+                لطفا نام کاربری (آیدی) خود را ست کنید
+                یا اگر ست کرده اید، در دسترسی عمومی قرار دهید
+                """, ct);
+
+            return;
+        }
 
         logger.LogInformation("Update {UpdateId}: chat={ChatId}", update.UpdateId, chatId);
 
