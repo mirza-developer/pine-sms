@@ -62,11 +62,13 @@ try
         builder.Services.AddSingleton<IChatAgentService, ChatAgentService>();
     builder.Services.AddSingleton<BotChatMessageQueue>();
     builder.Services.AddSingleton<ChatSessionStore>();
+    builder.Services.AddSingleton<PhotoMessageStore>();
     builder.Services.AddSingleton<BaleBotClient>();
     builder.Services.AddScoped<IBotUpdateHandler, BotUpdateHandler>();
 
     builder.Services.AddHostedService<BaleBotWorker>();
     builder.Services.AddHostedService<BotChatMessageSaverWorker>();
+    builder.Services.AddHostedService<PhotoMessageStoreCleanupWorker>();
 
     var host = builder.Build();
 
