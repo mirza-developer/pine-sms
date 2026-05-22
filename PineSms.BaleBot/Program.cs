@@ -62,6 +62,7 @@ try
         builder.Services.AddSingleton<IChatAgentService, ChatAgentService>();
     builder.Services.AddSingleton<BotChatMessageQueue>();
     builder.Services.AddSingleton<ChatSessionStore>();
+    builder.Services.AddSingleton<PhotoMessageStore>();
     builder.Services.AddSingleton<BaleBotClient>();
     builder.Services.AddScoped<IBotUpdateHandler, BotUpdateHandler>();
 

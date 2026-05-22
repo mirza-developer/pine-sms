@@ -73,4 +73,33 @@ public class BaleBotClient
         }
         return false;
     }
+
+    /// <summary>Forwards an existing message to the target chat.</summary>
+    public async Task<bool> ForwardMessageAsync(long chatId, long fromChatId, long messageId, CancellationToken ct)
+    {
+        var body = new BaleForwardMessageRequest
+        {
+            ChatId = chatId,
+            FromChatId = fromChatId,
+            MessageId = messageId
+        };
+        try
+        {
+            var response = await httpClient.PostAsJsonAsync("forwardMessage", body, ct);
+            if (response.IsSuccessStatusCode)
+                return true;
+
+            var error = await response.Content.ReadAsStringAsync(ct);
+            logger.LogWarning("forwardMessage failed: {StatusCode} {Error}", response.StatusCode, error);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Exception forwarding message {MessageId} from chat {FromChatId} to chat {ChatId}", messageId, fromChatId, chatId);
+        }
+        return false;
+    }
 }

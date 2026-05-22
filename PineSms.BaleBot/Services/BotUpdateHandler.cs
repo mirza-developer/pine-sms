@@ -29,6 +29,7 @@ public class BotUpdateHandler : IBotUpdateHandler
     private readonly IChatAgentService agentService;
     private readonly ChatSessionStore sessionStore;
     private readonly BotChatMessageQueue chatMessageQueue;
+    private readonly PhotoMessageStore photoMessageStore;
     private readonly ILogger<BotUpdateHandler> logger;
     private readonly List<long> chatIds = new()
     {
@@ -43,6 +44,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         IChatAgentService agentService,
         ChatSessionStore sessionStore,
         BotChatMessageQueue chatMessageQueue,
+        PhotoMessageStore photoMessageStore,
         ILogger<BotUpdateHandler> logger)
     {
         this.botClient = botClient;
@@ -50,13 +52,22 @@ public class BotUpdateHandler : IBotUpdateHandler
         this.agentService = agentService;
         this.sessionStore = sessionStore;
         this.chatMessageQueue = chatMessageQueue;
+        this.photoMessageStore = photoMessageStore;
         this.logger = logger;
     }
 
     public async Task HandleAsync(BaleUpdate update, CancellationToken ct)
     {
         var message = update.Message;
-        if (message is null || string.IsNullOrWhiteSpace(message.Text))
+        if (message is null)
+            return;
+
+        bool hasPhoto = message.Photo is { Length: > 0 };
+        bool hasText = !string.IsNullOrWhiteSpace(message.Text);
+        bool hasCaption = !string.IsNullOrWhiteSpace(message.Caption);
+
+        // Ignore messages with no text, caption, or photo content
+        if (!hasText && !hasPhoto && !hasCaption)
             return;
 
         var chatId = message.Chat.Id;
@@ -66,7 +77,6 @@ public class BotUpdateHandler : IBotUpdateHandler
             return;
         }
 
-        var text = message.Text.Trim();
         var username = message.From?.Username;
 
         if (string.IsNullOrEmpty(username))
@@ -82,7 +92,27 @@ public class BotUpdateHandler : IBotUpdateHandler
             return;
         }
 
-        logger.LogInformation("Update {UpdateId}: chat={ChatId}", update.UpdateId, chatId);
+        logger.LogInformation("Update {UpdateId}: chat={ChatId} hasPhoto={HasPhoto}", update.UpdateId, chatId, hasPhoto);
+
+        // When the user sends a photo, store it for later forwarding
+        if (hasPhoto)
+        {
+            // Use the highest-resolution variant (last element in the array)
+            var bestPhoto = message.Photo![^1];
+            photoMessageStore.StorePhoto(chatId, message.MessageId);
+            logger.LogInformation("Stored photo message_id={MessageId} for chat={ChatId} (file_id={FileId})",
+                message.MessageId, chatId, bestPhoto.FileId);
+        }
+
+        // Build the text that will be forwarded to the AI.
+        // If the user sent only a photo (no text or caption), inject a placeholder.
+        string text;
+        if (hasText)
+            text = message.Text!.Trim();
+        else if (hasCaption)
+            text = $"[کاربر یک تصویر با توضیح زیر ارسال کرد]\n{message.Caption!.Trim()}";
+        else
+            text = "[کاربر یک تصویر ارسال کرد]";
 
         // Enqueue user message for background persistence (fire-and-forget)
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, chatId, text, IsFromBot: false, DateTime.UtcNow));
@@ -334,6 +364,20 @@ public class BotUpdateHandler : IBotUpdateHandler
         defectiveLog += order + userBaleUsername + "\n #defective";
 
         await botClient.SendMessageAsync(targetChatId, defectiveLog, ct);
+
+        // Forward the user's photo to the support chat when the AI confirmed one was received
+        if (hasPhoto)
+        {
+            var storedPhoto = photoMessageStore.TakePhoto(userChatId);
+            if (storedPhoto.HasValue)
+            {
+                await botClient.ForwardMessageAsync(targetChatId, storedPhoto.Value.FromChatId, storedPhoto.Value.MessageId, ct);
+            }
+            else
+            {
+                logger.LogWarning("HasPhoto=true for DefectiveProduct but no stored photo found for chat {ChatId}", userChatId);
+            }
+        }
     }
 
     private async Task HandlePhotoMismatchAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
