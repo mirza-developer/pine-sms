@@ -13,12 +13,6 @@ public class PhotoMessageStore
 {
     public static readonly TimeSpan EntryTtl = TimeSpan.FromMinutes(5);
 
-    private sealed class PhotoEntry(long messageId)
-    {
-        public List<long> MessageIds { get; } = [messageId];
-        public DateTime CreatedAt { get; } = DateTime.UtcNow;
-    }
-
     private readonly ConcurrentDictionary<long, PhotoEntry> photos = new();
 
     /// <summary>

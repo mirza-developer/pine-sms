@@ -65,7 +65,7 @@ public class ArvanChatAgentService : IChatAgentService
         if (!string.IsNullOrWhiteSpace(sessionJson))
         {
             history = JsonSerializer.Deserialize<List<ArvanMessage>>(sessionJson,
-                          JsonOptions.Default)
+                          ArvanJsonOptions.Default)
                       ?? new List<ArvanMessage>();
         }
         else
@@ -82,7 +82,7 @@ public class ArvanChatAgentService : IChatAgentService
 
         // ── Call ArvanCloud Chat Completions API ──────────────────────────────
         var requestBody = new ArvanChatRequest(model, messages);
-        var response = await httpClient!.PostAsJsonAsync("chat/completions", requestBody, JsonOptions.Default);
+        var response = await httpClient!.PostAsJsonAsync("chat/completions", requestBody, ArvanJsonOptions.Default);
         response.EnsureSuccessStatusCode();
 
         var responseBody = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -96,7 +96,7 @@ public class ArvanChatAgentService : IChatAgentService
         history.Add(new ArvanMessage("user", userText));
         history.Add(new ArvanMessage("assistant", responseText));
 
-        var serializedSession = JsonSerializer.Serialize(history, JsonOptions.Default);
+        var serializedSession = JsonSerializer.Serialize(history, ArvanJsonOptions.Default);
 
         return (responseText, serializedSession);
     }
@@ -140,22 +140,4 @@ public class ArvanChatAgentService : IChatAgentService
         return string.Join(Environment.NewLine, lines);
     }
 
-    // ── Private model types ───────────────────────────────────────────────────
-
-    private sealed record ArvanMessage(
-        [property: JsonPropertyName("role")] string Role,
-        [property: JsonPropertyName("content")] string Content);
-
-    private sealed record ArvanChatRequest(
-        [property: JsonPropertyName("model")] string Model,
-        [property: JsonPropertyName("messages")] IReadOnlyList<ArvanMessage> Messages);
-
-    private static class JsonOptions
-    {
-        internal static readonly JsonSerializerOptions Default = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
     }
-}
