@@ -9,27 +9,28 @@ namespace PineSms.BaleBot.Services;
 /// </summary>
 public class PhotoMessageStore
 {
-    private readonly ConcurrentDictionary<long, (long MessageId, long FromChatId)> photos = new();
+    private readonly ConcurrentDictionary<long, long> photos = new();
 
-    /// <summary>Stores (or replaces) the latest photo message for the given user chat.</summary>
+    /// <summary>Stores (or replaces) the latest photo message ID for the given user chat.</summary>
     public void StorePhoto(long userChatId, long messageId)
-        => photos[userChatId] = (messageId, userChatId);
+        => photos[userChatId] = messageId;
 
     /// <summary>
-    /// Removes and returns the stored photo for the given user chat, or <c>null</c> if none exists.
+    /// Removes and returns the stored photo message ID for the given user chat,
+    /// or <c>null</c> if none exists.
     /// </summary>
-    public (long MessageId, long FromChatId)? TakePhoto(long userChatId)
+    public long? TakePhoto(long userChatId)
     {
-        if (photos.TryRemove(userChatId, out var photo))
-            return photo;
+        if (photos.TryRemove(userChatId, out var messageId))
+            return messageId;
         return null;
     }
 
-    /// <summary>Returns the stored photo for the given user chat without removing it, or <c>null</c> if none exists.</summary>
-    public (long MessageId, long FromChatId)? PeekPhoto(long userChatId)
+    /// <summary>Returns the stored photo message ID for the given user chat without removing it, or <c>null</c> if none exists.</summary>
+    public long? PeekPhoto(long userChatId)
     {
-        if (photos.TryGetValue(userChatId, out var photo))
-            return photo;
+        if (photos.TryGetValue(userChatId, out var messageId))
+            return messageId;
         return null;
     }
 }

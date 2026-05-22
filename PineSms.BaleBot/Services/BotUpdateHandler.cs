@@ -368,10 +368,10 @@ public class BotUpdateHandler : IBotUpdateHandler
         // Forward the user's photo to the support chat when the AI confirmed one was received
         if (hasPhoto)
         {
-            var storedPhoto = photoMessageStore.TakePhoto(userChatId);
-            if (storedPhoto.HasValue)
+            var storedMessageId = photoMessageStore.TakePhoto(userChatId);
+            if (storedMessageId.HasValue)
             {
-                await botClient.ForwardMessageAsync(targetChatId, storedPhoto.Value.FromChatId, storedPhoto.Value.MessageId, ct);
+                await botClient.ForwardMessageAsync(targetChatId, userChatId, storedMessageId.Value, ct);
             }
             else
             {
