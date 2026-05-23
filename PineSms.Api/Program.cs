@@ -38,7 +38,9 @@ builder.Services.AddHttpClient("Melipayamak", client =>
 });
 builder.Services.AddHttpClient("BaleMessenger", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["BaleMessenger:BaseUrl"]);
+    var url = builder.Configuration["BaleMessenger:SafirBaseUrl"];
+    if (!string.IsNullOrEmpty(url))
+        client.BaseAddress = new Uri(url);
 });
 builder.Services.AddCors(options =>
 {

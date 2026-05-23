@@ -145,20 +145,27 @@ public class OrderRepository : IOrderService
     public async Task<(bool success, string message)> DeleteOrderStatus(int id)
     {
         var status = await dbContext.OrderStatus.FindAsync(id);
-        if (status == null)
+
+        if (status is null)
+        {
             return (false, "وضعیت سفارش یافت نشد");
+        }
 
         bool hasOrders = await dbContext.CustomerOrder.AnyAsync(o => o.OrderStatusId == id);
+
         if (hasOrders)
+        {
             return (false, "این وضعیت در سفارشات استفاده شده و قابل حذف نیست");
+        }
 
         dbContext.OrderStatus.Remove(status);
+        
         await dbContext.SaveChangesAsync();
+        
         return (true, "وضعیت سفارش حذف شد");
     }
 
-    public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)
-    {
+    public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)    {
         var result = new BulkUpdateTrackingResult();
 
         foreach (var entry in command.Entries)
@@ -184,6 +191,30 @@ public class OrderRepository : IOrderService
         result.Message = $"{result.UpdatedCount} سفارش به‌روزرسانی شد" +
                          (result.NotFoundCount > 0 ? $"، {result.NotFoundCount} کد یافت نشد" : "");
         return result;
+    }
+
+    public async Task<TrackOrderResult> GetOrderByCode(string orderCode)
+    {
+        var order = await dbContext.CustomerOrder
+            .Include(o => o.OrderStatus)
+            .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
+
+        if (order is null)
+        {
+            return new()
+            {
+                Found = false 
+            };
+        }
+
+        return new()
+        {
+            Found = true,
+            OrderCode = order.OrderCode,
+            StatusTitle = order.OrderStatus.Title,
+            PostalTrackingCode = order.PostalTrackingCode,
+            UpdatedAt = order.UpdatedAt
+        };
     }
 
     private static string NormalizePhoneNumber(string phone)

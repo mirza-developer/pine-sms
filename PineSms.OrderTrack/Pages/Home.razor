@@ -1,0 +1,106 @@
+﻿@page "/"
+@inject OrderTrackingService TrackingService
+
+<PageTitle>پیگیری سفارش</PageTitle>
+
+<div class="page">
+    <div class="page-header">
+        <h1>پیگیری سفارش</h1>
+        <p>کد سفارش خود را وارد کنید تا وضعیت آن را مشاهده کنید.</p>
+    </div>
+
+    <div class="card">
+        <div class="form-group">
+            <label for="orderCode">کد سفارش</label>
+            <input id="orderCode"
+                   class="form-control"
+                   type="text"
+                   placeholder="مثال: 12345"
+                   @bind="orderCode"
+                   @bind:event="oninput"
+                   @onkeydown="OnKeyDown"
+                   disabled="@isLoading" />
+        </div>
+
+        <button class="btn btn-primary" @onclick="TrackOrder" disabled="@(isLoading || string.IsNullOrWhiteSpace(orderCode))">
+            @if (isLoading)
+            {
+                <span class="spinner sm"></span>
+                <span>در حال جستجو...</span>
+            }
+            else
+            {
+                <span>پیگیری سفارش</span>
+            }
+        </button>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        @if (result is not null)
+        {
+            <div class="result-panel">
+                <h2>نتیجه پیگیری</h2>
+                <div class="result-row">
+                    <span class="result-label">کد سفارش</span>
+                    <span class="result-value">@result.OrderCode</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">وضعیت</span>
+                    <span class="result-value"><span class="badge">@result.StatusTitle</span></span>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(result.PostalTrackingCode))
+                {
+                    <div class="result-row">
+                        <span class="result-label">کد رهگیری پستی</span>
+                        <span class="result-value">@result.PostalTrackingCode</span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">کد را در سایت پست وارد کنید تا وضعیت مرسوله را ببینید</span>
+                        <span class="result-value">
+                            <a href="https://tracking.post.ir/" target="_blank" class="badge">سایت پست</a>
+                        </span>
+                    </div>
+                }
+                <div class="result-row">
+                    <span class="result-label">آخرین به‌روزرسانی</span>
+                    <span class="result-value">@result.UpdatedAt.ToString("yyyy/MM/dd HH:mm")</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string orderCode = string.Empty;
+    private bool isLoading;
+    private string? errorMessage;
+    private OrderTrackResult? result;
+
+    private async Task TrackOrder()
+    {
+        if (string.IsNullOrWhiteSpace(orderCode))
+            return;
+
+        isLoading = true;
+        errorMessage = null;
+        result = null;
+
+        var (success, trackResult, error) = await TrackingService.TrackAsync(orderCode);
+
+        if (success)
+            result = trackResult;
+        else
+            errorMessage = error;
+
+        isLoading = false;
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await TrackOrder();
+    }
+}

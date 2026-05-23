@@ -15,6 +15,7 @@
   </Folder>
   <Folder Name="/src/Presentation/UI/">
     <Project Path="PineSms.UI/PineSms.UI.csproj" />
+    <Project Path="PineSms.OrderTrack/PineSms.OrderTrack.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="PineSms.Shared/PineSms.Shared.csproj" Id="07402509-3af7-432d-9f8e-e119702a43ef" />
