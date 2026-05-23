@@ -145,15 +145,23 @@ public class OrderRepository : IOrderService
     public async Task<(bool success, string message)> DeleteOrderStatus(int id)
     {
         var status = await dbContext.OrderStatus.FindAsync(id);
-        if (status == null)
+
+        if (status is null)
+        {
             return (false, "وضعیت سفارش یافت نشد");
+        }
 
         bool hasOrders = await dbContext.CustomerOrder.AnyAsync(o => o.OrderStatusId == id);
+
         if (hasOrders)
+        {
             return (false, "این وضعیت در سفارشات استفاده شده و قابل حذف نیست");
+        }
 
         dbContext.OrderStatus.Remove(status);
+        
         await dbContext.SaveChangesAsync();
+        
         return (true, "وضعیت سفارش حذف شد");
     }
 
@@ -187,17 +195,19 @@ public class OrderRepository : IOrderService
 
     public async Task<TrackOrderResult> GetOrderByCode(string orderCode)
     {
-        if (orderCode.StartsWith("wc-"))
-            orderCode = orderCode.Replace("wc-", "");
-
         var order = await dbContext.CustomerOrder
             .Include(o => o.OrderStatus)
             .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
 
         if (order is null)
-            return new TrackOrderResult { Found = false };
+        {
+            return new()
+            {
+                Found = false 
+            };
+        }
 
-        return new TrackOrderResult
+        return new()
         {
             Found = true,
             OrderCode = order.OrderCode,
