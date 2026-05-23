@@ -31,7 +31,11 @@ public class AuthStateService : AuthenticationStateProvider
         {
             var result = await localStorage.GetAsync<string>(TokenKey);
             if (result.Success && !string.IsNullOrEmpty(result.Value))
+            {
                 ApplyToken(result.Value);
+                if (IsTokenExpired)
+                    await LogoutAsync();
+            }
         }
         catch
         {
@@ -57,6 +61,17 @@ public class AuthStateService : AuthenticationStateProvider
     public string UserName => currentUser.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
     public string PersianName => currentUser.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
     public string UserId => currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+    public bool IsTokenExpired
+    {
+        get
+        {
+            var expClaim = currentUser.FindFirst("exp");
+            if (expClaim == null) return false;
+            return long.TryParse(expClaim.Value, out var exp)
+                && DateTimeOffset.UtcNow.ToUnixTimeSeconds() >= exp;
+        }
+    }
 
     private void ApplyToken(string token)
     {

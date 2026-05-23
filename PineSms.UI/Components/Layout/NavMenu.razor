@@ -1,5 +1,4 @@
 @using PineSms.UI.Services
-@inject AuthStateService AuthState
 
 <nav class="nav-menu">
     @if (AuthState.IsAuthenticated)
@@ -25,21 +24,6 @@
             <NavLink class="nav-link" href="customer/import">
                 <span class="bi bi-file-earmark-excel-fill nav-icon" aria-hidden="true"></span>
                 <span class="nav-text">ورود از اکسل</span>
-            </NavLink>
-        </div>
-
-        <div class="nav-section-label">پیامک</div>
-
-        <div class="nav-item">
-            <NavLink class="nav-link" href="sms/send">
-                <span class="bi bi-chat-dots-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">ارسال پیامک</span>
-            </NavLink>
-        </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="sms/jobs">
-                <span class="bi bi-calendar-check-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">گزارش ارسال‌ها</span>
             </NavLink>
         </div>
 
