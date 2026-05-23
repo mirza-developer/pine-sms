@@ -1,3 +1,11 @@
+@font-face {
+    font-family: Vazirmatn;
+    src: url('../fonts/Vazirmatn.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
@@ -5,12 +13,12 @@
 }
 
 :root {
-    --pine-bg:       #F8F4EE;
-    --pine-surface:  #E8DDCF;
-    --pine-neutral:  #D8D3CC;
-    --pine-text:     #2B2B2B;
-    --pine-accent1:  #D8A48F;
-    --pine-accent2:  #B68B62;
+    --pine-bg: #F8F4EE;
+    --pine-surface: #b5dba2;
+    --pine-neutral: #D8D3CC;
+    --pine-text: #2B2B2B;
+    --pine-accent1: #D8A48F;
+    --pine-accent2: #7dc243;
 }
 
 html, body {
