@@ -70,7 +70,9 @@ public partial class MainLayout : IDisposable
 
         // These routes are always accessible and bypass the menu-link check
         if (path is "/" or "/login" or "/access-denied") return;
-        if (path.StartsWith("/settings/menu-access", StringComparison.OrdinalIgnoreCase) && AuthState.IsAdmin) return;
+
+        // Admin users have no restrictions
+        if (AuthState.IsAdmin) return;
 
         if (!MenuAccess.CanAccess(path))
         {
