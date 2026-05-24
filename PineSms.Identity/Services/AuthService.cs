@@ -32,7 +32,7 @@ public class AuthService : IAuthService
         if (user is null)
             return new GetUserLoginResult { Success = false, Message = "نام کاربری یا رمز عبور اشتباه است" };
 
-        var claimsIdentity = GetClaimsIdentity(user);
+        var claimsIdentity = await GetClaimsIdentityAsync(user);
         var configSec = configuration.GetSection("Identity");
 
         SecurityTokenDescriptor descriptor = new()
@@ -53,14 +53,36 @@ public class AuthService : IAuthService
         return new GetUserLoginResult { Success = true, Token = jwt };
     }
 
-    private ClaimsIdentity GetClaimsIdentity(ApplicationUser user)
+    public async Task<List<UserDto>> GetAllUsersAsync()
     {
+        return await context.Users
+            .OrderBy(u => u.UserName)
+            .Select(u => new UserDto
+            {
+                Id = u.Id,
+                UserName = u.UserName ?? string.Empty,
+                PersianName = u.PersianName
+            })
+            .ToListAsync();
+    }
+
+    private async Task<ClaimsIdentity> GetClaimsIdentityAsync(ApplicationUser user)
+    {
+        var roles = await context.UserRoles
+            .Where(ur => ur.UserId == user.Id)
+            .Join(context.Roles!, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name!)
+            .ToListAsync();
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, user.UserName ?? string.Empty),
             new(ClaimTypes.NameIdentifier, user.Id),
             new(ClaimTypes.Surname, user.PersianName)
         };
+
+        foreach (var role in roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
+
         return new ClaimsIdentity(claims);
     }
 }

@@ -3,61 +3,29 @@
 <nav class="nav-menu">
     @if (AuthState.IsAuthenticated)
     {
-        <div class="nav-section-label">منو</div>
+        @foreach (var section in sections)
+        {
+            <div class="nav-section-label">@section</div>
+            @foreach (var link in menuLinks.Where(l => l.SectionLabel == section).OrderBy(l => l.DisplayOrder))
+            {
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="@link.Url.TrimStart('/')" Match="@(link.Url == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                        <span class="bi @link.IconName nav-icon" aria-hidden="true"></span>
+                        <span class="nav-text">@link.Title</span>
+                    </NavLink>
+                </div>
+            }
+        }
 
-        <div class="nav-item">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">خانه</span>
-            </NavLink>
-        </div>
-
-        <div class="nav-section-label">مشتریان</div>
-
-        <div class="nav-item">
-            <NavLink class="nav-link" href="customer/add">
-                <span class="bi bi-person-plus-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">افزودن مشتری</span>
-            </NavLink>
-        </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="customer/import">
-                <span class="bi bi-file-earmark-excel-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">ورود از اکسل</span>
-            </NavLink>
-        </div>
-
-        <div class="nav-section-label">سفارشات</div>
-
-        <div class="nav-item">
-            <NavLink class="nav-link" href="order/statuses">
-                <span class="bi bi-tags-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">وضعیت‌های سفارش</span>
-            </NavLink>
-        </div>
-        <div class="nav-item">
-            <NavLink class="nav-link" href="order/ananas-tracking">
-                <span class="bi bi-box-seam-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">بارکد پستی آناناس</span>
-            </NavLink>
-        </div>
-
-        <div class="nav-section-label">تنظیمات</div>
-
-        <div class="nav-item">
-            <NavLink class="nav-link" href="settings/apikeys">
-                <span class="bi bi-key-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">کلیدهای API</span>
-            </NavLink>
-        </div>
-
-        <div class="nav-section-label">ربات بله</div>
-
-        <div class="nav-item">
-            <NavLink class="nav-link" href="bot/conversations">
-                <span class="bi bi-chat-dots-fill nav-icon" aria-hidden="true"></span>
-                <span class="nav-text">مکالمات کاربران</span>
-            </NavLink>
-        </div>
+        @if (AuthState.IsAdmin)
+        {
+            <div class="nav-section-label">مدیریت</div>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="settings/menu-access">
+                    <span class="bi bi-shield-lock-fill nav-icon" aria-hidden="true"></span>
+                    <span class="nav-text">دسترسی منو</span>
+                </NavLink>
+            </div>
+        }
     }
 </nav>

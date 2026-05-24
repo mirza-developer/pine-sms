@@ -1,0 +1,19 @@
+@page "/access-denied"
+@using PineSms.UI.Services
+@inject NavigationManager Navigation
+@inject AuthStateService AuthState
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height:60vh;">
+    <div class="card shadow-sm border-0 text-center p-5" style="max-width:480px;width:100%;">
+        <div class="mb-3">
+            <span class="bi bi-shield-x text-danger" style="font-size:4rem;"></span>
+        </div>
+        <h4 class="fw-bold text-danger mb-2">دسترسی مجاز نیست</h4>
+        <p class="text-muted mb-4">شما مجوز دسترسی به این صفحه را ندارید. لطفاً با مدیر سیستم تماس بگیرید.</p>
+        <button class="btn btn-outline-primary px-4" @onclick="GoHome">بازگشت به خانه</button>
+    </div>
+</div>
+
+@code {
+    private void GoHome() => Navigation.NavigateTo("/");
+}

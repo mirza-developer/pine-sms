@@ -75,7 +75,10 @@
 
                 <div class="d-flex gap-2">
                     <button class="btn btn-success" @onclick="HandleImport" disabled="@isLoading">
-                        @if (isLoading) { <span class="spinner-border spinner-border-sm me-2"></span> }
+                        @if (isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
                         ثبت در سیستم
                     </button>
                     <button class="btn btn-outline-secondary" @onclick="ClearFile" disabled="@isLoading">

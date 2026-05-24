@@ -1,42 +1,50 @@
 @page "/"
+@using PineSms.UI.Services
+@using PineSms.Core.Features.MenuLink
+@inject MenuAccessStateService MenuAccess
+
+@code {
+    private List<MenuLinkDto> accessibleLinks = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await MenuAccess.EnsureLoadedAsync();
+            accessibleLinks = MenuAccess.GetLinks().Where(l => l.Url != "/").ToList();
+            StateHasChanged();
+        }
+    }
+
+    private static string GetCardColor(string iconName) => iconName switch
+    {
+        var n when n.Contains("person") => "success",
+        var n when n.Contains("excel") => "info",
+        var n when n.Contains("box") => "warning",
+        var n when n.Contains("tags") => "primary",
+        var n when n.Contains("key") => "secondary",
+        var n when n.Contains("chat") => "dark",
+        _ => "primary"
+    };
+}
 
 <div class="container-fluid px-3 px-md-4 mt-4">
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
-        <div class="col">
-            <div class="card h-100 text-center shadow-sm border-0">
-                <div class="card-body py-4">
-                    <div class="mb-3">
-                        <span class="bi bi-person-plus-fill text-success" style="font-size:2.5rem;"></span>
+        @foreach (var link in accessibleLinks)
+        {
+            var color = GetCardColor(link.IconName);
+            <div class="col">
+                <div class="card h-100 text-center shadow-sm border-0">
+                    <div class="card-body py-4">
+                        <div class="mb-3">
+                            <span class="bi @link.IconName text-@color" style="font-size:2.5rem;"></span>
+                        </div>
+                        <h5 class="card-title fw-semibold">@link.Title</h5>
+                        <a href="@link.Url.TrimStart('/')" class="btn btn-@color btn-sm px-4">شروع</a>
                     </div>
-                    <h5 class="card-title fw-semibold">افزودن مشتری</h5>
-                    <p class="card-text text-muted small">ثبت مشتری جدید از طریق فرم</p>
-                    <a href="/customer/add" class="btn btn-success btn-sm px-4">شروع</a>
                 </div>
             </div>
-        </div>
-        <div class="col">
-            <div class="card h-100 text-center shadow-sm border-0">
-                <div class="card-body py-4">
-                    <div class="mb-3">
-                        <span class="bi bi-file-earmark-excel-fill text-info" style="font-size:2.5rem;"></span>
-                    </div>
-                    <h5 class="card-title fw-semibold">ورود از اکسل</h5>
-                    <p class="card-text text-muted small">وارد کردن مشتریان از فایل اکسل</p>
-                    <a href="/customer/import" class="btn btn-info btn-sm px-4">شروع</a>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="card h-100 text-center shadow-sm border-0">
-                <div class="card-body py-4">
-                    <div class="mb-3">
-                        <span class="bi bi-box-seam-fill text-warning" style="font-size:2.5rem;"></span>
-                    </div>
-                    <h5 class="card-title fw-semibold">بارکد پستی </h5>
-                    <p class="card-text text-muted small">ورود کدهای رهگیری پستی از فایل اکسل </p>
-                    <a href="/order/ananas-tracking" class="btn btn-warning btn-sm px-4">شروع</a>
-                </div>
-            </div>
-        </div>
+        }
     </div>
 </div>
+

@@ -32,13 +32,13 @@ public class PineSmsDbContext : DbContext
     public DbSet<CustomerOrder> CustomerOrder { get; set; }
     public DbSet<ApiKey> ApiKey { get; set; }
     public DbSet<BotChatMessage> BotChatMessage { get; set; }
+    public DbSet<MenuLink> MenuLink { get; set; }
+    public DbSet<UserMenuLink> UserMenuLink { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Composite index used by the scheduled SMS worker to efficiently find
-        // pending parts that are due for sending.
         modelBuilder.Entity<SmsSendJobPart>()
             .HasIndex(p => new { p.Status, p.ScheduledAt })
             .HasDatabaseName("IX_SmsSendJobPart_Status_ScheduledAt");
@@ -77,5 +77,29 @@ public class PineSmsDbContext : DbContext
         modelBuilder.Entity<BotChatMessage>()
             .HasIndex(m => m.SentAt)
             .HasDatabaseName("IX_BotChatMessage_SentAt");
+
+        // ── MenuLink ──────────────────────────────────────────────────────────
+
+        modelBuilder.Entity<UserMenuLink>()
+            .HasOne(um => um.MenuLink)
+            .WithMany(m => m.UserMenuLinks)
+            .HasForeignKey(um => um.MenuLinkId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserMenuLink>()
+            .HasIndex(um => new { um.UserId, um.MenuLinkId })
+            .IsUnique()
+            .HasDatabaseName("IX_UserMenuLink_UserId_MenuLinkId");
+
+        // Seed default menu links
+        modelBuilder.Entity<MenuLink>().HasData(
+            new MenuLink { Id = 1, Title = "خانه", Url = "/", IconName = "bi-house-door-fill", SectionLabel = "منو", DisplayOrder = 1 },
+            new MenuLink { Id = 2, Title = "افزودن مشتری", Url = "/customer/add", IconName = "bi-person-plus-fill", SectionLabel = "مشتریان", DisplayOrder = 2 },
+            new MenuLink { Id = 3, Title = "ورود از اکسل", Url = "/customer/import", IconName = "bi-file-earmark-excel-fill", SectionLabel = "مشتریان", DisplayOrder = 3 },
+            new MenuLink { Id = 4, Title = "وضعیت‌های سفارش", Url = "/order/statuses", IconName = "bi-tags-fill", SectionLabel = "سفارشات", DisplayOrder = 4 },
+            new MenuLink { Id = 5, Title = "بارکد پستی آناناس", Url = "/order/ananas-tracking", IconName = "bi-box-seam-fill", SectionLabel = "سفارشات", DisplayOrder = 5 },
+            new MenuLink { Id = 6, Title = "کلیدهای API", Url = "/settings/apikeys", IconName = "bi-key-fill", SectionLabel = "تنظیمات", DisplayOrder = 6 },
+            new MenuLink { Id = 7, Title = "مکالمات کاربران", Url = "/bot/conversations", IconName = "bi-chat-dots-fill", SectionLabel = "ربات بله", DisplayOrder = 7 }
+        );
     }
 }

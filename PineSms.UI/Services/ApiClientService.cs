@@ -5,6 +5,7 @@ using PineSms.Core.Features.Account;
 using PineSms.Core.Features.ApiKey;
 using PineSms.Core.Features.BotConversation;
 using PineSms.Core.Features.Customer;
+using PineSms.Core.Features.MenuLink;
 using PineSms.Core.Features.Order;
 using PineSms.Core.Features.Sms;
 
@@ -185,6 +186,34 @@ public class ApiClientService
     {
         return await httpClient.GetFromJsonAsync<BotUserSummaryPageResult>(
             $"api/bot/user-summaries?page={page}&pageSize={pageSize}");
+    }
+
+    // ── Menu Links ────────────────────────────────────────────────────────
+    public async Task<List<MenuLinkDto>?> GetMyMenuLinksAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<MenuLinkDto>>("api/menulink");
+    }
+
+    public async Task<List<MenuLinkDto>?> GetAllMenuLinksAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<MenuLinkDto>>("api/menulink/all");
+    }
+
+    public async Task<List<UserDto>?> GetAllUsersAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<UserDto>>("api/menulink/users");
+    }
+
+    public async Task<List<int>?> GetUserMenuLinkIdsAsync(string userId)
+    {
+        return await httpClient.GetFromJsonAsync<List<int>>($"api/menulink/users/{userId}/links");
+    }
+
+    public async Task<bool> SaveUserMenuLinksAsync(string userId, List<int> menuLinkIds)
+    {
+        var command = new SaveUserMenuLinksCommand { UserId = userId, MenuLinkIds = menuLinkIds };
+        var response = await httpClient.PostAsJsonAsync($"api/menulink/users/{userId}/links", command);
+        return response.IsSuccessStatusCode;
     }
 }
 

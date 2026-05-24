@@ -47,6 +47,7 @@ builder.Services.AddScoped<ApiClientService>(sp =>
 
 builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateService>());
+builder.Services.AddScoped<MenuAccessStateService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddSingleton<ExcelDownloadTokenStore>();
 

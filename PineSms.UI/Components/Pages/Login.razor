@@ -25,7 +25,10 @@
                 <InputText type="password" class="form-control" @bind-Value="loginModel.Password" />
             </div>
             <button type="submit" class="btn btn-primary w-100" disabled="@isLoading">
-                @if (isLoading) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
                 ورود
             </button>
         </EditForm>

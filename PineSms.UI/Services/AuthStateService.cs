@@ -58,9 +58,17 @@ public class AuthStateService : AuthenticationStateProvider
     }
 
     public bool IsAuthenticated => currentUser.Identity?.IsAuthenticated ?? false;
-    public string UserName => currentUser.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
-    public string PersianName => currentUser.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
-    public string UserId => currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+    public string UserName => currentUser.FindFirst("unique_name")?.Value
+                           ?? currentUser.FindFirst(ClaimTypes.Name)?.Value
+                           ?? string.Empty;
+    public string PersianName => currentUser.FindFirst("family_name")?.Value
+                              ?? currentUser.FindFirst(ClaimTypes.Surname)?.Value
+                              ?? string.Empty;
+    public string UserId => currentUser.FindFirst("nameid")?.Value
+                         ?? currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? string.Empty;
+    public bool IsAdmin => currentUser.FindFirst("role")?.Value == "Admin"
+                        || currentUser.IsInRole("Admin");
 
     public bool IsTokenExpired
     {
