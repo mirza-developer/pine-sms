@@ -18,11 +18,11 @@
             <DataAnnotationsValidator />
             <div class="mb-3">
                 <label class="form-label">نام کاربری</label>
-                <InputText class="form-control" @bind-Value="loginModel.Username" placeholder="admin" />
+                <InputText class="form-control" @bind-Value="loginModel.Username" />
             </div>
             <div class="mb-3">
                 <label class="form-label">رمز عبور</label>
-                <InputText type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="••••••••" />
+                <InputText type="password" class="form-control" @bind-Value="loginModel.Password" />
             </div>
             <button type="submit" class="btn btn-primary w-100" disabled="@isLoading">
                 @if (isLoading) { <span class="spinner-border spinner-border-sm me-1"></span> }
