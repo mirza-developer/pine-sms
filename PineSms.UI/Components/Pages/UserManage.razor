@@ -7,7 +7,7 @@
 
 @if (!AuthState.IsAdmin)
 {
-    <div class="alert alert-danger m-4">دسترسی مجاز نیست.</div>
+    Navigation.NavigateTo("/access-denied", replace: true);
     return;
 }
 

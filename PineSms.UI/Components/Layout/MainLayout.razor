@@ -67,7 +67,10 @@ else
                 }
             </div>
             <article class="content px-3 px-md-4">
-                @Body
+                @if (!isAccessDenied)
+                {
+                    @Body
+                }
             </article>
         </main>
     </div>

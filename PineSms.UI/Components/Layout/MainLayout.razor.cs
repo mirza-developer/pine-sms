@@ -14,6 +14,7 @@ public partial class MainLayout : IDisposable
 
     private bool collapseNavMenu = true;
     private bool isAuthInitialized = false;
+    private bool isAccessDenied = false;
 
     protected override void OnInitialized()
     {
@@ -56,7 +57,7 @@ public partial class MainLayout : IDisposable
 
     /// <summary>
     /// Checks whether the current user may access the given absolute URL.
-    /// If not, redirects to /access-denied.
+    /// If not, sets isAccessDenied and redirects to /access-denied.
     /// Unauthenticated users are handled by the route guard (redirect to /login).
     /// </summary>
     private void CheckAccess(string absoluteUri)
@@ -69,14 +70,27 @@ public partial class MainLayout : IDisposable
         if (string.IsNullOrEmpty(path)) path = "/";
 
         // These routes are always accessible and bypass the menu-link check
-        if (path is "/" or "/login" or "/access-denied") return;
+        if (path is "/" or "/login" or "/access-denied")
+        {
+            isAccessDenied = false;
+            return;
+        }
 
         // Admin users have no restrictions
-        if (AuthState.IsAdmin) return;
+        if (AuthState.IsAdmin)
+        {
+            isAccessDenied = false;
+            return;
+        }
 
         if (!MenuAccess.CanAccess(path))
         {
+            isAccessDenied = true;
             Navigation.NavigateTo("/access-denied", replace: true);
+        }
+        else
+        {
+            isAccessDenied = false;
         }
     }
 
