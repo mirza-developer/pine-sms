@@ -57,7 +57,6 @@ namespace PineSms.Persistence.Migrations
                 columns: new[] { "Id", "DisplayOrder", "IconName", "IsShown", "SectionLabel", "Title", "Url" },
                 values: new object[,]
                 {
-                    { 1, 1, "bi-house-door-fill", true, "منو", "خانه", "/" },
                     { 2, 2, "bi-person-plus-fill", true, "مشتریان", "افزودن مشتری", "/customer/add" },
                     { 3, 3, "bi-file-earmark-excel-fill", true, "مشتریان", "ورود از اکسل", "/customer/import" },
                     { 4, 4, "bi-tags-fill", true, "سفارشات", "وضعیت‌های سفارش", "/order/statuses" },
