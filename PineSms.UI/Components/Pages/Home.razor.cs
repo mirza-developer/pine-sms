@@ -8,6 +8,7 @@ public partial class Home
     public List<MenuLinkDto> AccessibleLinks = [];
 
     [Inject] private AuthStateService AuthState { get; set; } = default!;
+    [Inject] private MenuAccessStateService MenuAccessState { get; set; } = default!;
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
@@ -15,9 +16,9 @@ public partial class Home
         if (!AuthState.IsAuthenticated)
             Navigation.NavigateTo("/login");
 
-        await MenuAccess.EnsureLoadedAsync();
+        await MenuAccessState.EnsureLoadedAsync();
 
-        AccessibleLinks = MenuAccess.GetLinks().Where(l => l.Url != "/").ToList();
+        AccessibleLinks = MenuAccessState.GetLinks().Where(l => l.Url != "/").ToList();
 
         StateHasChanged();
     }

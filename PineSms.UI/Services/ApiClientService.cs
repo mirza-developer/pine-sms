@@ -215,6 +215,33 @@ public class ApiClientService
         var response = await httpClient.PostAsJsonAsync($"api/menulink/users/{userId}/links", command);
         return response.IsSuccessStatusCode;
     }
+
+    // ── User Management ───────────────────────────────────────────────────
+    public async Task<List<UserDto>?> GetNonAdminUsersAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<UserDto>>("api/user");
+    }
+
+    public async Task<(bool success, string message)> CreateUserAsync(CreateUserCommand command)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/user", command);
+        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر ایجاد شد" : "خطا در ایجاد کاربر"));
+    }
+
+    public async Task<(bool success, string message)> UpdateUserAsync(string userId, UpdateUserCommand command)
+    {
+        var response = await httpClient.PutAsJsonAsync($"api/user/{userId}", command);
+        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر به‌روزرسانی شد" : "خطا در به‌روزرسانی کاربر"));
+    }
+
+    public async Task<(bool success, string message)> DeleteUserAsync(string userId)
+    {
+        var response = await httpClient.DeleteAsync($"api/user/{userId}");
+        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر حذف شد" : "خطا در حذف کاربر"));
+    }
 }
 
 public class MessageResponse
