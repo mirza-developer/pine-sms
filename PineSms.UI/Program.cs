@@ -41,7 +41,11 @@ builder.Services.AddScoped<ApiClientService>(sp =>
     {
         InnerHandler = new HttpClientHandler()
     };
-    var httpClient = new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
+    var httpClient = new HttpClient(handler) 
+    { 
+        BaseAddress = new Uri(baseUrl),
+        Timeout = TimeSpan.FromSeconds(30) // Prevent hanging requests
+    };
     return new ApiClientService(httpClient);
 });
 

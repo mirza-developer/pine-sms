@@ -13,6 +13,7 @@ public class JwtExpirationHandler : DelegatingHandler
 {
     private readonly Lazy<AuthStateService> authState;
     private readonly Lazy<NavigationManager> navigation;
+    private bool _isLoggingOut = false;
 
     public JwtExpirationHandler(Lazy<AuthStateService> authState, Lazy<NavigationManager> navigation)
     {
@@ -26,8 +27,7 @@ public class JwtExpirationHandler : DelegatingHandler
         // Proactive check: logout before the request reaches the server
         if (authState.Value.IsAuthenticated && authState.Value.IsTokenExpired)
         {
-            await authState.Value.LogoutAsync();
-            navigation.Value.NavigateTo("/login");
+            await PerformLogout();
             return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
         }
 
@@ -35,12 +35,29 @@ public class JwtExpirationHandler : DelegatingHandler
 
         // Reactive check: server rejected the token
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized
-            && authState.Value.IsAuthenticated)
+            && authState.Value.IsAuthenticated
+            && !_isLoggingOut)
         {
-            await authState.Value.LogoutAsync();
-            navigation.Value.NavigateTo("/login");
+            await PerformLogout();
         }
 
         return response;
+    }
+
+    private async Task PerformLogout()
+    {
+        if (_isLoggingOut) return;
+
+        _isLoggingOut = true;
+        try
+        {
+            await authState.Value.LogoutAsync();
+            // Use forceLoad to ensure full page reload and clear state
+            navigation.Value?.NavigateTo("/login", forceLoad: true);
+        }
+        finally
+        {
+            _isLoggingOut = false;
+        }
     }
 }

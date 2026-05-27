@@ -45,9 +45,14 @@ public class MenuAccessStateService
         try
         {
             cachedLinks = await apiClientService.GetMyMenuLinksAsync();
+            // Ensure we never have a null list
+            if (cachedLinks == null)
+                cachedLinks = [];
         }
-        catch
+        catch (Exception ex)
         {
+            // Log the error for diagnostics but don't fail - just use empty list
+            Console.Error.WriteLine($"[MenuAccessStateService] Failed to load menu links: {ex.Message}");
             cachedLinks = [];
         }
 

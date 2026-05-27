@@ -23,6 +23,13 @@ public class AuthService : IAuthService
 
     public async Task<GetUserLoginResult> Authenticate(GetUserLoginQuery request)
     {
+        // Input validation
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            return new GetUserLoginResult { Success = false, Message = "نام کاربری و رمز عبور الزامی است" };
+
+        if (request.Username.Length > 100 || request.Password.Length > 100)
+            return new GetUserLoginResult { Success = false, Message = "نام کاربری یا رمز عبور نامعتبر است" };
+
         string hashedPassword = CryptographyTools.GetHashedStringSha256StringBuilder(request.Password);
 
         var user = await context.Users
@@ -35,14 +42,30 @@ public class AuthService : IAuthService
         var claimsIdentity = await GetClaimsIdentityAsync(user);
         var configSec = configuration.GetSection("Identity");
 
+        // Validate JWT configuration security
+        var secret = configSec["Signing"];
+        if (string.IsNullOrWhiteSpace(secret) || secret.Length < 32)
+            throw new InvalidOperationException("JWT secret key must be configured and at least 32 characters long");
+
+        var issuer = configSec["Issuer"];
+        if (string.IsNullOrWhiteSpace(issuer))
+            throw new InvalidOperationException("JWT Issuer must be configured");
+
+        var audience = configSec["Audience"];
+        if (string.IsNullOrWhiteSpace(audience))
+            throw new InvalidOperationException("JWT Audience must be configured");
+
+        if (!int.TryParse(configSec["Expires"], out var expiresHours) || expiresHours <= 0)
+            throw new InvalidOperationException("JWT Expires must be configured as a positive integer (hours)");
+
         SecurityTokenDescriptor descriptor = new()
         {
-            Issuer = configSec["Issuer"],
-            Audience = configSec["Audience"],
+            Issuer = issuer,
+            Audience = audience,
             IssuedAt = DateTime.Now,
             NotBefore = DateTime.Now,
-            Expires = DateTime.Now.AddHours(int.Parse(configSec["Expires"] ?? "8")),
-            SigningCredentials = CryptographyTools.GetJwtCredential(configSec["Signing"] ?? "PineSms_JWT_Secret_Key_32Chars"),
+            Expires = DateTime.Now.AddHours(expiresHours),
+            SigningCredentials = CryptographyTools.GetJwtCredential(secret),
             Subject = claimsIdentity
         };
 

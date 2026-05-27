@@ -35,12 +35,14 @@ builder.Services.AddHostedService<OrderNotifyWorker>();
 builder.Services.AddHttpClient("Melipayamak", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Melipayamak:BaseUrl"]);
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
 builder.Services.AddHttpClient("BaleMessenger", client =>
 {
     var url = builder.Configuration["BaleMessenger:SafirBaseUrl"];
     if (!string.IsNullOrEmpty(url))
         client.BaseAddress = new Uri(url);
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
 builder.Services.AddCors(options =>
 {
