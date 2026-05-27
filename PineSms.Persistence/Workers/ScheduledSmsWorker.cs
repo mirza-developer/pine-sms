@@ -61,16 +61,15 @@ public class ScheduledSmsWorker : BackgroundService
 
         logger.LogInformation("Processing {Count} due SMS job parts.", dueParts.Count);
 
-        foreach (var part in dueParts)
-        {
-            part.Status = SmsJobPartStatus.Sending;
-        }
-        await db.SaveChangesAsync(ct);
-
+        // Process each part individually with immediate status persistence
         foreach (var part in dueParts)
         {
             try
             {
+                // Mark as sending and save immediately
+                part.Status = SmsJobPartStatus.Sending;
+                await db.SaveChangesAsync(ct);
+
                 var customerIds = JsonSerializer.Deserialize<List<int>>(part.CustomerIdsJson) ?? new();
                 var customers = await db.Customer
                     .Where(c => customerIds.Contains(c.Id))
@@ -115,16 +114,26 @@ public class ScheduledSmsWorker : BackgroundService
                         "Job {JobId} part {PartNumber}: provider rejected submission. Error: {Error}",
                         part.JobId, part.PartNumber, results.ErrorMessage);
                 }
+
+                // Save the final status
+                await db.SaveChangesAsync(ct);
             }
             catch (Exception ex)
             {
-                part.Status = SmsJobPartStatus.Failed;
-                part.ExecutedAt = DateTime.Now;
-                part.ResultJson = JsonSerializer.Serialize(new { error = ex.Message });
-                logger.LogError(ex, "Failed to send job {JobId} part {PartNumber}.", part.JobId, part.PartNumber);
+                // Ensure failure status is persisted even on exception
+                try
+                {
+                    part.Status = SmsJobPartStatus.Failed;
+                    part.ExecutedAt = DateTime.Now;
+                    part.ResultJson = JsonSerializer.Serialize(new { error = ex.Message });
+                    await db.SaveChangesAsync(ct);
+                    logger.LogError(ex, "Failed to send job {JobId} part {PartNumber}.", part.JobId, part.PartNumber);
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogError(saveEx, "Failed to save error status for job {JobId} part {PartNumber}.", part.JobId, part.PartNumber);
+                }
             }
-
-            await db.SaveChangesAsync(ct);
         }
     }
 }

@@ -5,6 +5,7 @@ using PineSms.Core.Features.Account;
 using PineSms.Core.Features.ApiKey;
 using PineSms.Core.Features.BotConversation;
 using PineSms.Core.Features.Customer;
+using PineSms.Core.Features.MenuLink;
 using PineSms.Core.Features.Order;
 using PineSms.Core.Features.Sms;
 
@@ -36,10 +37,28 @@ public class ApiClientService
 
     public async Task<GetUserLoginResult?> LoginAsync(GetUserLoginQuery query)
     {
-        var response = await httpClient.PostAsJsonAsync("api/auth/login", query);
-        if (response.IsSuccessStatusCode)
-            return await response.Content.ReadFromJsonAsync<GetUserLoginResult>();
-        return new GetUserLoginResult { Success = false, Message = "خطا در ورود به سیستم" };
+        try
+        {
+            var response = await httpClient.PostAsJsonAsync("api/auth/login", query);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GetUserLoginResult>();
+                return result ?? new GetUserLoginResult { Success = false, Message = "خطا در خواندن پاسخ سرور" };
+            }
+            return new GetUserLoginResult { Success = false, Message = "خطا در ورود به سیستم" };
+        }
+        catch (HttpRequestException ex)
+        {
+            return new GetUserLoginResult { Success = false, Message = $"خطای شبکه: {ex.Message}" };
+        }
+        catch (TaskCanceledException)
+        {
+            return new GetUserLoginResult { Success = false, Message = "زمان درخواست به پایان رسید" };
+        }
+        catch (Exception ex)
+        {
+            return new GetUserLoginResult { Success = false, Message = $"خطای غیرمنتظره: {ex.Message}" };
+        }
     }
 
     public async Task<(bool success, string message)> InsertCustomerAsync(InsertCustomerCommand command)
@@ -53,31 +72,62 @@ public class ApiClientService
 
     public async Task<ImportCustomersResult?> ImportCustomersAsync(ImportCustomersCommand command)
     {
-        var response = await httpClient.PostAsJsonAsync("api/customer/import", command);
-        return await response.Content.ReadFromJsonAsync<ImportCustomersResult>();
+        try
+        {
+            var response = await httpClient.PostAsJsonAsync("api/customer/import", command);
+            if (!response.IsSuccessStatusCode)
+                return null;
+            return await response.Content.ReadFromJsonAsync<ImportCustomersResult>();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<List<PineSms.Core.Entities.Customer>?> GetCustomersByRangeAsync(DateTime from, DateTime to, string? phonePrefix = null, bool? isTester = null)
     {
-        var url = $"api/customer/byrange?from={from:yyyy-MM-ddTHH:mm:ss}&to={to:yyyy-MM-ddTHH:mm:ss}";
-        if (!string.IsNullOrEmpty(phonePrefix))
-            url += $"&phonePrefix={Uri.EscapeDataString(phonePrefix)}";
-        if (isTester.HasValue)
-            url += $"&isTester={isTester.Value.ToString().ToLowerInvariant()}";
-        return await httpClient.GetFromJsonAsync<List<PineSms.Core.Entities.Customer>>(url);
+        try
+        {
+            var url = $"api/customer/byrange?from={from:yyyy-MM-ddTHH:mm:ss}&to={to:yyyy-MM-ddTHH:mm:ss}";
+            if (!string.IsNullOrEmpty(phonePrefix))
+                url += $"&phonePrefix={Uri.EscapeDataString(phonePrefix)}";
+            if (isTester.HasValue)
+                url += $"&isTester={isTester.Value.ToString().ToLowerInvariant()}";
+            return await httpClient.GetFromJsonAsync<List<PineSms.Core.Entities.Customer>>(url);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<(PineSms.Core.Entities.Customer? customer, string? errorMessage)> GetCustomerByPhoneAsync(string phoneNumber)
     {
-        var response = await httpClient.GetAsync($"api/customer/byphone/{phoneNumber}");
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var customer = await response.Content.ReadFromJsonAsync<PineSms.Core.Entities.Customer>();
-            return (customer, null);
+            var response = await httpClient.GetAsync($"api/customer/byphone/{phoneNumber}");
+            if (response.IsSuccessStatusCode)
+            {
+                var customer = await response.Content.ReadFromJsonAsync<PineSms.Core.Entities.Customer>();
+                return (customer, null);
+            }
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return (null, "مشتری با این شماره یافت نشد");
+            return (null, "خطا در جستجو");
         }
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            return (null, "مشتری با این شماره یافت نشد");
-        return (null, "خطا در جستجو");
+        catch (HttpRequestException ex)
+        {
+            return (null, $"خطای شبکه: {ex.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            return (null, "زمان درخواست به پایان رسید");
+        }
+        catch (Exception ex)
+        {
+            return (null, $"خطا: {ex.Message}");
+        }
     }
 
     public async Task<(bool success, string message)> UpdateCustomerAsync(UpdateCustomerCommand command)
@@ -185,6 +235,61 @@ public class ApiClientService
     {
         return await httpClient.GetFromJsonAsync<BotUserSummaryPageResult>(
             $"api/bot/user-summaries?page={page}&pageSize={pageSize}");
+    }
+
+    // ── Menu Links ────────────────────────────────────────────────────────
+    public async Task<List<MenuLinkDto>?> GetMyMenuLinksAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<MenuLinkDto>>("api/menulink");
+    }
+
+    public async Task<List<MenuLinkDto>?> GetAllMenuLinksAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<MenuLinkDto>>("api/menulink/all");
+    }
+
+    public async Task<List<UserDto>?> GetAllUsersAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<UserDto>>("api/menulink/users");
+    }
+
+    public async Task<List<int>?> GetUserMenuLinkIdsAsync(string userId)
+    {
+        return await httpClient.GetFromJsonAsync<List<int>>($"api/menulink/users/{userId}/links");
+    }
+
+    public async Task<bool> SaveUserMenuLinksAsync(string userId, List<int> menuLinkIds)
+    {
+        var command = new SaveUserMenuLinksCommand { UserId = userId, MenuLinkIds = menuLinkIds };
+        var response = await httpClient.PostAsJsonAsync($"api/menulink/users/{userId}/links", command);
+        return response.IsSuccessStatusCode;
+    }
+
+    // ── User Management ───────────────────────────────────────────────────
+    public async Task<List<UserDto>?> GetNonAdminUsersAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<UserDto>>("api/user");
+    }
+
+    public async Task<(bool success, string message)> CreateUserAsync(CreateUserCommand command)
+    {
+        var response = await httpClient.PostAsJsonAsync("api/user", command);
+        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر ایجاد شد" : "خطا در ایجاد کاربر"));
+    }
+
+    public async Task<(bool success, string message)> UpdateUserAsync(string userId, UpdateUserCommand command)
+    {
+        var response = await httpClient.PutAsJsonAsync($"api/user/{userId}", command);
+        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر به‌روزرسانی شد" : "خطا در به‌روزرسانی کاربر"));
+    }
+
+    public async Task<(bool success, string message)> DeleteUserAsync(string userId)
+    {
+        var response = await httpClient.DeleteAsync($"api/user/{userId}");
+        var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر حذف شد" : "خطا در حذف کاربر"));
     }
 }
 

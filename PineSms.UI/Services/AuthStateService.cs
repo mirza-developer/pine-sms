@@ -31,32 +31,78 @@ public class AuthStateService : AuthenticationStateProvider
         {
             var result = await localStorage.GetAsync<string>(TokenKey);
             if (result.Success && !string.IsNullOrEmpty(result.Value))
+            {
                 ApplyToken(result.Value);
+                if (IsTokenExpired)
+                    await LogoutAsync();
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            // JS interop not ready (pre-render pass) – silently skip
+            // JS interop not ready (pre-render pass) or other storage error – silently skip
+            Console.Error.WriteLine($"[AuthStateService] InitializeAsync failed (expected during pre-render): {ex.Message}");
         }
     }
 
     /// <summary>Saves token to localStorage and updates in-memory auth state.</summary>
     public async Task SetTokenAsync(string token)
     {
-        try { await localStorage.SetAsync(TokenKey, token); } catch { }
+        try 
+        { 
+            await localStorage.SetAsync(TokenKey, token); 
+        } 
+        catch (Exception ex) 
+        {
+            // Log but don't fail - token is still set in memory for this session
+            Console.Error.WriteLine($"[AuthStateService] Failed to persist token to localStorage: {ex.Message}");
+        }
+
         ApplyToken(token);
     }
 
     /// <summary>Clears token from localStorage and resets in-memory auth state.</summary>
     public async Task LogoutAsync()
     {
-        try { await localStorage.DeleteAsync(TokenKey); } catch { }
+        try 
+        { 
+            await localStorage.DeleteAsync(TokenKey); 
+        } 
+        catch (Exception ex) 
+        {
+            // Log but continue with logout - in-memory state will still be cleared
+            Console.Error.WriteLine($"[AuthStateService] Failed to delete token from localStorage: {ex.Message}");
+        }
         ClearState();
     }
 
     public bool IsAuthenticated => currentUser.Identity?.IsAuthenticated ?? false;
-    public string UserName => currentUser.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
-    public string PersianName => currentUser.FindFirst(ClaimTypes.Surname)?.Value ?? string.Empty;
-    public string UserId => currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+    public string UserName => currentUser.FindFirst("unique_name")?.Value
+                           ?? currentUser.FindFirst(ClaimTypes.Name)?.Value
+                           ?? string.Empty;
+    public string PersianName => currentUser.FindFirst("family_name")?.Value
+                              ?? currentUser.FindFirst(ClaimTypes.Surname)?.Value
+                              ?? string.Empty;
+    public string UserId => currentUser.FindFirst("nameid")?.Value
+                         ?? currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? string.Empty;
+    public bool IsAdmin => currentUser.FindFirst("role")?.Value == "Admin"
+                        || currentUser.IsInRole("Admin");
+
+    public bool IsTokenExpired
+    {
+        get
+        {
+            var expClaim = currentUser.FindFirst("exp");
+            // No expiration claim = treat as expired for safety
+            if (expClaim == null) return true;
+
+            // Invalid expiration value = treat as expired
+            if (!long.TryParse(expClaim.Value, out var exp)) return true;
+
+            // Add 60-second grace period for clock skew between client and server
+            return DateTimeOffset.UtcNow.ToUnixTimeSeconds() >= (exp - 60);
+        }
+    }
 
     private void ApplyToken(string token)
     {

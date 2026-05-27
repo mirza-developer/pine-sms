@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using PineSms.UI.Components;
@@ -25,25 +26,32 @@ builder.Host.UseSerilog((context, services, loggerConfig) => loggerConfig
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Register a named HttpClient so we can resolve it inside a Scoped factory below.
-// AddHttpClient<T> registers ApiClientService as Transient, which means each Blazor
-// component injection gets a different instance than the one held by AuthStateService,
-// so the JWT token set by AuthStateService would never reach the components.
-// Using a named client + explicit Scoped registration ensures one shared instance per
-// Blazor circuit (user connection), so SetToken() is visible to every component.
-builder.Services.AddHttpClient("PineSmsApiClient", client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5161/");
-});
+// Build a scoped ApiClientService with a JWT-expiration delegating handler.
+// Lazy<T> is used for AuthStateService and NavigationManager to break the
+// circular dependency: AuthStateService → ApiClientService → AuthStateService.
+// The Lazy wrappers resolve the services only when the first HTTP request is made,
+// at which point both services are already fully constructed.
 builder.Services.AddScoped<ApiClientService>(sp =>
 {
-    var factory = sp.GetRequiredService<IHttpClientFactory>();
-    var httpClient = factory.CreateClient("PineSmsApiClient");
+    var lazyAuth = new Lazy<AuthStateService>(() => sp.GetRequiredService<AuthStateService>());
+    var lazyNav  = new Lazy<NavigationManager>(() => sp.GetRequiredService<NavigationManager>());
+    var baseUrl  = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5161/";
+
+    var handler = new JwtExpirationHandler(lazyAuth, lazyNav)
+    {
+        InnerHandler = new HttpClientHandler()
+    };
+    var httpClient = new HttpClient(handler) 
+    { 
+        BaseAddress = new Uri(baseUrl),
+        Timeout = TimeSpan.FromSeconds(30) // Prevent hanging requests
+    };
     return new ApiClientService(httpClient);
 });
 
 builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateService>());
+builder.Services.AddScoped<MenuAccessStateService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddSingleton<ExcelDownloadTokenStore>();
 
