@@ -203,6 +203,11 @@ public class BotUpdateHandler : IBotUpdateHandler
 
     private async Task HandleFeedbackAsync(long userChatId, string feedbackJson, string username, CancellationToken ct)
     {
+        // Use CancellationToken.None for feedback forwarding to support groups to ensure
+        // messages are sent even if the user's request times out. This prevents loss of
+        // important feedback notifications to support staff.
+        var groupMessageCt = CancellationToken.None;
+
         if (string.IsNullOrEmpty(username))
         {
             const string noUsernameMsg = "دوست عزیز مزون آناناس، لطفاً نام کاربری خود را در بله تنظیم کنید و در دسترس قرار دهید تا بتوانیم به شما پاسخ دهیم.";
@@ -244,50 +249,51 @@ public class BotUpdateHandler : IBotUpdateHandler
         string userBaleUsername = $"\n کاربری: @{username}";
 
         // Route to appropriate handler based on feedback type
+        // Pass both ct (for user messages) and groupMessageCt (for group messages)
         switch (feedbackType)
         {
             case "Satisfaction":
-                await HandleSatisfactionAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleSatisfactionAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "Complaint":
-                await HandleComplaintAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleComplaintAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "DefectiveProduct":
-                await HandleDefectiveProductAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleDefectiveProductAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "PhotoMismatch":
-                await HandlePhotoMismatchAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandlePhotoMismatchAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "ReturnedPackage":
-                await HandleReturnedPackageAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleReturnedPackageAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "Wholesale":
-                await HandleWholesaleAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleWholesaleAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "NoOrderCode":
-                await HandleNoOrderCodeAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleNoOrderCodeAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "FailedPayment":
-                await HandleFailedPaymentAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleFailedPaymentAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "DelayedDelivery":
-                await HandleDelayedDeliveryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleDelayedDeliveryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "WrongSize":
-                await HandleWrongSizeAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleWrongSizeAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             case "UnknownQuery":
-                await HandleUnknownQueryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                await HandleUnknownQueryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct, groupMessageCt);
                 break;
 
             default:
@@ -296,7 +302,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         }
     }
 
-    private async Task HandleSatisfactionAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleSatisfactionAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSatisfactionSuccess = """
             مبارکتون باشه. خوشحالیم تونستیم پاسخ اعتمادتون رو بدیم. به امید دیدار مجدد در خرید های بعدی
@@ -313,10 +319,10 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername;
 
-        await botClient.SendMessageAsync(targetChatId, satisfactionLog, ct);
+        await botClient.SendMessageAsync(targetChatId, satisfactionLog, groupCt);
     }
 
-    private async Task HandleComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageComplaintSuccess = "📣 اطلاعات شما ثبت شد:\nپشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageComplaintSuccess, ct);
@@ -351,10 +357,10 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         complaintLog += userBaleUsername + "\n #case ";
 
-        await botClient.SendMessageAsync(targetChatId, complaintLog, ct);
+        await botClient.SendMessageAsync(targetChatId, complaintLog, groupCt);
     }
 
-    private async Task HandleDefectiveProductAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleDefectiveProductAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -376,7 +382,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         defectiveLog += order + userBaleUsername + "\n #defective";
 
-        await botClient.SendMessageAsync(targetChatId, defectiveLog, ct);
+        await botClient.SendMessageAsync(targetChatId, defectiveLog, groupCt);
 
         // Forward the user's photo(s) to the support chat when the AI confirmed one was received
         if (hasPhoto)
@@ -385,7 +391,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             if (storedMessageIds.Count > 0)
             {
                 foreach (var msgId in storedMessageIds)
-                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, ct);
+                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, groupCt);
             }
             else
             {
@@ -394,7 +400,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         }
     }
 
-    private async Task HandlePhotoMismatchAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandlePhotoMismatchAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -416,7 +422,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         mismatchLog += order + userBaleUsername + "\n #mismatch";
 
-        await botClient.SendMessageAsync(targetChatId, mismatchLog, ct);
+        await botClient.SendMessageAsync(targetChatId, mismatchLog, groupCt);
 
         // Forward the user's photo(s) to the support chat when the AI confirmed one was received
         if (hasPhoto)
@@ -425,7 +431,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             if (storedMessageIds.Count > 0)
             {
                 foreach (var msgId in storedMessageIds)
-                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, ct);
+                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, groupCt);
             }
             else
             {
@@ -434,7 +440,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         }
     }
 
-    private async Task HandleReturnedPackageAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleReturnedPackageAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -454,10 +460,10 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         returnedLog += order + userBaleUsername + "\n #returned";
 
-        await botClient.SendMessageAsync(targetChatId, returnedLog, ct);
+        await botClient.SendMessageAsync(targetChatId, returnedLog, groupCt);
     }
 
-    private async Task HandleWholesaleAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleWholesaleAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ درخواست عمده شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -473,10 +479,10 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername + "\n #wholesale";
 
-        await botClient.SendMessageAsync(targetChatId, wholesaleLog, ct);
+        await botClient.SendMessageAsync(targetChatId, wholesaleLog, groupCt);
     }
 
-    private async Task HandleNoOrderCodeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleNoOrderCodeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از بررسی در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -494,10 +500,10 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"تاریخ پرداخت: {paymentDate}" +
             userBaleUsername + "\n #nocode";
 
-        await botClient.SendMessageAsync(targetChatId, noCodeLog, ct);
+        await botClient.SendMessageAsync(targetChatId, noCodeLog, groupCt);
     }
 
-    private async Task HandleFailedPaymentAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleFailedPaymentAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از بررسی در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -517,10 +523,10 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername + "\n #failedpayment";
 
-        await botClient.SendMessageAsync(targetChatId, failedPaymentLog, ct);
+        await botClient.SendMessageAsync(targetChatId, failedPaymentLog, groupCt);
     }
 
-    private async Task HandleDelayedDeliveryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleDelayedDeliveryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما پس از پیگیری در بله به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -538,10 +544,10 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         delayedLog += order + userBaleUsername + "\n #delayed";
 
-        await botClient.SendMessageAsync(targetChatId, delayedLog, ct);
+        await botClient.SendMessageAsync(targetChatId, delayedLog, groupCt);
     }
 
-    private async Task HandleWrongSizeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleWrongSizeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -561,10 +567,10 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         wrongSizeLog += order + userBaleUsername + "\n #wrongsize";
 
-        await botClient.SendMessageAsync(targetChatId, wrongSizeLog, ct);
+        await botClient.SendMessageAsync(targetChatId, wrongSizeLog, groupCt);
     }
 
-    private async Task HandleUnknownQueryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    private async Task HandleUnknownQueryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct, CancellationToken groupCt)
     {
         string messageSuccess = "✅ پیام شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
@@ -578,7 +584,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername + "\n #unknown";
 
-        await botClient.SendMessageAsync(targetChatId, unknownLog, ct);
+        await botClient.SendMessageAsync(targetChatId, unknownLog, groupCt);
     }
 
     private async Task<string> LookupOrderAsync(string? orderCode, CancellationToken ct)
