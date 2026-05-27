@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/External Docs/">
+    <File Path="bale-docs.html" />
+  </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/Application/">
     <Project Path="PineSms.Core/PineSms.Core.csproj" />
@@ -14,8 +17,8 @@
     <Project Path="PineSms.BaleBot/PineSms.BaleBot.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/UI/">
-    <Project Path="PineSms.UI/PineSms.UI.csproj" />
     <Project Path="PineSms.OrderTrack/PineSms.OrderTrack.csproj" />
+    <Project Path="PineSms.UI/PineSms.UI.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="PineSms.Shared/PineSms.Shared.csproj" Id="07402509-3af7-432d-9f8e-e119702a43ef" />
