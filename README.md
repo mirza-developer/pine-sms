@@ -14,12 +14,14 @@
 
 ```
 PineSms/
-├── PineSms.Core/           # لایه دامین – موجودیت‌ها، قراردادها، DTOها
-├── PineSms.Persistence/    # لایه داده – EF Core، SQL Server، مخازن
-├── PineSms.Identity/       # احراز هویت – JWT، Identity، seed داده
-├── PineSms.Api/            # REST API – کنترلرها
-├── PineSms.UI/             # رابط کاربری – Blazor Server
-└── PineSms.slnx            # فایل سولوشن
+├── PineSms.Core/                 # لایه دامین – موجودیت‌ها، قراردادها، DTOها
+├── PineSms.Persistence/          # لایه داده – EF Core، SQL Server، مخازن
+├── PineSms.Identity/             # احراز هویت – JWT، Identity، seed داده
+├── PineSms.Api/                  # REST API – کنترلرها
+├── PineSms.UI/                   # رابط کاربری – Blazor Server
+├── PineSms.BaleBot/              # سرویس ربات پیام‌رسان بله با قابلیت AI
+├── PineSms.InstructionAnalyzer/  # ابزار تحلیل و بهبود دستورالعمل‌های AI
+└── PineSms.slnx                  # فایل سولوشن
 ```
 
 ---
