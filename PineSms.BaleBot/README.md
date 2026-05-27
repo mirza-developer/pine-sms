@@ -46,7 +46,8 @@ Bale API  ───────────────────────�
   ▼                                                                             │
 BaleBotWorker (BackgroundService)                                               │
   │                                                                             │
-  │  dispatch each update                                                       │
+  │  dispatch updates CONCURRENTLY (max 10 concurrent)                          │
+  │  while maintaining per-user message order                                   │
   ▼                                                                             │
 BotUpdateHandler (IBotUpdateHandler, Scoped)                                    │
   │                                                                             │
@@ -65,6 +66,20 @@ BotUpdateHandler (IBotUpdateHandler, Scoped)                                    
   │                                                                             │
   └── BaleBotClient  (HTTP wrapper for Bale Bot API)  ───────────────────────►│
 ```
+
+### Concurrent Processing Model
+
+**BaleBotWorker** processes up to 10 user requests concurrently using a dual-semaphore approach:
+
+1. **Global Semaphore** (`MaxConcurrentUpdates = 10`): Limits total concurrent update processing to prevent server resource exhaustion.
+2. **Per-User Semaphores**: Ensures messages from the same user are processed in order, preventing mixed responses.
+
+**Benefits:**
+- Users don't block each other (User A's AI call doesn't delay User B's request)
+- Natural backpressure prevents resource exhaustion
+- Per-user ordering guarantees correct conversation flow
+- Minimal resource overhead (uses async/await on thread pool)
+- 60-second timeout per update prevents stuck requests
 
 ---
 
@@ -184,7 +199,7 @@ When a customer sends a photo (e.g. to show a defective product):
 
 | Class | Type | Responsibility |
 |---|---|---|
-| `BaleBotWorker` | `BackgroundService` | Long-polls `getUpdates` (30 s timeout) and dispatches each update to `IBotUpdateHandler` |
+| `BaleBotWorker` | `BackgroundService` | Long-polls `getUpdates` (30 s timeout) and dispatches updates concurrently to `IBotUpdateHandler` (max 10 concurrent, with per-user ordering and 60s timeout per request) |
 | `BotChatMessageSaverWorker` | `BackgroundService` | Drains `BotChatMessageQueue` and persists each entry to the `BotChatMessage` table |
 | `PhotoMessageStoreCleanupWorker` | `BackgroundService` | Periodically evicts expired photo entries from `PhotoMessageStore` |
 
