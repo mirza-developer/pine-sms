@@ -160,7 +160,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             {
                 var order = await dbContext.CustomerOrder
                     .Include(o => o.OrderStatus)
-                    .FirstOrDefaultAsync(o => o.OrderCode == orderCode, ct);
+                    .FirstOrDefaultAsync(o => o.OrderCode == orderCode, CancellationToken.None);
 
                 if (order != null)
                 {
@@ -324,7 +324,9 @@ public class BotUpdateHandler : IBotUpdateHandler
         {
             logger.LogError(ex, "Error processing feedback type {FeedbackType} for user {Username} to group {TargetChatId}",
                 feedbackType, username, targetChatId);
-            throw;
+
+            // Don't re-throw - we've already logged the error and notified the user with success message
+            // Re-throwing would prevent the user from getting the confirmation they already received
         }
     }
 
@@ -371,7 +373,7 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         var order = await dbContext.CustomerOrder
                .Include(o => o.OrderStatus)
-               .FirstOrDefaultAsync(o => o.OrderCode == orderCode, ct);
+               .FirstOrDefaultAsync(o => o.OrderCode == orderCode, CancellationToken.None);
 
         if (order is not null)
         {
@@ -626,7 +628,7 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         var order = await dbContext.CustomerOrder
             .Include(o => o.OrderStatus)
-            .FirstOrDefaultAsync(o => o.OrderCode == orderCode, ct);
+            .FirstOrDefaultAsync(o => o.OrderCode == orderCode, CancellationToken.None);
 
         if (order is not null)
         {
