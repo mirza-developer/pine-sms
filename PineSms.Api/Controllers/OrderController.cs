@@ -84,4 +84,19 @@ public class OrderController : ControllerBase
         if (!success) return BadRequest(new { message });
         return Ok(new { message });
     }
+
+    [HttpGet("statistics")]
+    [Authorize]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> GetStatistics([FromQuery] DateTime startDate, [FromQuery] DateTime endDate, [FromQuery] string groupBy = "day")
+    {
+        var query = new GetOrderStatisticsQuery
+        {
+            StartDate = startDate,
+            EndDate = endDate,
+            GroupBy = groupBy
+        };
+        var result = await orderService.GetOrderStatistics(query);
+        return Ok(result);
+    }
 }

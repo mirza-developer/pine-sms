@@ -203,7 +203,7 @@ public class OrderRepository : IOrderService
         {
             return new()
             {
-                Found = false 
+                Found = false
             };
         }
 
@@ -215,6 +215,77 @@ public class OrderRepository : IOrderService
             PostalTrackingCode = order.PostalTrackingCode,
             UpdatedAt = order.UpdatedAt
         };
+    }
+
+    public async Task<OrderStatisticsResult> GetOrderStatistics(GetOrderStatisticsQuery query)
+    {
+        var orders = await dbContext.CustomerOrder
+            .Where(o => o.CreatedAt >= query.StartDate && o.CreatedAt <= query.EndDate)
+            .OrderBy(o => o.CreatedAt)
+            .ToListAsync();
+
+        var result = new OrderStatisticsResult();
+
+        if (query.GroupBy == "day")
+        {
+            var grouped = orders.GroupBy(o => o.CreatedAt.Date)
+                .Select(g => new OrderStatisticsDataPoint
+                {
+                    Date = g.Key,
+                    Label = g.Key.ToString("yyyy/MM/dd"),
+                    Count = g.Count()
+                })
+                .OrderBy(d => d.Date)
+                .ToList();
+            result.DataPoints = grouped;
+        }
+        else if (query.GroupBy == "week")
+        {
+            var grouped = orders.GroupBy(o => GetWeekOfYear(o.CreatedAt))
+                .Select(g => new OrderStatisticsDataPoint
+                {
+                    Date = g.First().CreatedAt.Date,
+                    Label = $"هفته {g.Key}",
+                    Count = g.Count()
+                })
+                .OrderBy(d => d.Date)
+                .ToList();
+            result.DataPoints = grouped;
+        }
+        else if (query.GroupBy == "month")
+        {
+            var grouped = orders.GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
+                .Select(g => new OrderStatisticsDataPoint
+                {
+                    Date = new DateTime(g.Key.Year, g.Key.Month, 1),
+                    Label = $"{g.Key.Year}/{g.Key.Month:D2}",
+                    Count = g.Count()
+                })
+                .OrderBy(d => d.Date)
+                .ToList();
+            result.DataPoints = grouped;
+        }
+        else if (query.GroupBy == "year")
+        {
+            var grouped = orders.GroupBy(o => o.CreatedAt.Year)
+                .Select(g => new OrderStatisticsDataPoint
+                {
+                    Date = new DateTime(g.Key, 1, 1),
+                    Label = g.Key.ToString(),
+                    Count = g.Count()
+                })
+                .OrderBy(d => d.Date)
+                .ToList();
+            result.DataPoints = grouped;
+        }
+
+        return result;
+    }
+
+    private static int GetWeekOfYear(DateTime date)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        return culture.Calendar.GetWeekOfYear(date, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Saturday);
     }
 
     private static string NormalizePhoneNumber(string phone)

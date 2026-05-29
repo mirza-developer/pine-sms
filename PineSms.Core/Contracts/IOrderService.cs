@@ -11,4 +11,5 @@ public interface IOrderService
     Task<(bool success, string message)> DeleteOrderStatus(int id);
     Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command);
     Task<TrackOrderResult> GetOrderByCode(string orderCode);
+    Task<OrderStatisticsResult> GetOrderStatistics(GetOrderStatisticsQuery query);
 }
