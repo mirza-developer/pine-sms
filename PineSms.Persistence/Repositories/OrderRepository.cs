@@ -229,11 +229,41 @@ public class OrderRepository : IOrderService
 
         if (query.GroupBy == "week")
         {
-            var grouped = orders.GroupBy(o => GetWeekOfYear(o.CreatedAt))
+            // Group orders by week within the month
+            // Each week starts on Saturday (Persian week start)
+            var calendar = new PersianCalendar();
+            var grouped = orders
+                .GroupBy(o => {
+                    var date = o.CreatedAt;
+                    var year = calendar.GetYear(date);
+                    var month = calendar.GetMonth(date);
+                    var day = calendar.GetDayOfMonth(date);
+
+                    // Find the first day of the month
+                    var firstDayOfMonth = calendar.ToDateTime(year, month, 1, 0, 0, 0, 0);
+                    var firstDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+
+                    // Calculate week number within the month (1-based)
+                    // Saturday = 6, so we want Saturday to be the start of week
+                    var daysFromMonthStart = day - 1;
+                    var daysToFirstSaturday = (6 - firstDayOfWeek + 7) % 7;
+
+                    int weekInMonth;
+                    if (daysFromMonthStart < daysToFirstSaturday)
+                    {
+                        weekInMonth = 1; // First partial week
+                    }
+                    else
+                    {
+                        weekInMonth = 1 + ((daysFromMonthStart - daysToFirstSaturday) / 7) + 1;
+                    }
+
+                    return new { Year = year, Month = month, WeekInMonth = weekInMonth };
+                })
                 .Select(g => new OrderStatisticsDataPoint
                 {
                     Date = g.First().CreatedAt.Date,
-                    Label = $"هفته {g.Key}",
+                    Label = $"هفته {g.Key.WeekInMonth}",
                     Count = g.Count()
                 })
                 .OrderBy(d => d.Date)
@@ -268,12 +298,6 @@ public class OrderRepository : IOrderService
         }
 
         return result;
-    }
-
-    private static int GetWeekOfYear(DateTime date)
-    {
-        var calendar = new PersianCalendar();
-        return calendar.GetWeekOfYear(date, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Saturday);
     }
 
     private static string NormalizePhoneNumber(string phone)

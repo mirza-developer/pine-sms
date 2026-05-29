@@ -37,25 +37,6 @@ public partial class Home
         StateHasChanged();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            // Load Chart.js from CDN
-            await JS.InvokeVoidAsync("eval", @"
-                if (!window.Chart) {
-                    var script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
-                    script.onload = function() { console.log('Chart.js loaded'); };
-                    document.head.appendChild(script);
-                }
-            ");
-
-            // Wait for Chart.js to load
-            await Task.Delay(1000);
-        }
-    }
-
     private async Task OnRangeChanged()
     {
         await LoadChartData();
