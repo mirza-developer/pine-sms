@@ -52,6 +52,8 @@ using (var dbContext = new PineSmsDbContext(optionsBuilder.Options))
     messages = await dbContext.BotChatMessage
         .OrderBy(m => m.SentAt)
         .ToListAsync();
+
+    messages = messages.OrderByDescending(p=>p.SentAt).Take(400).ToList();
 }
 
 Console.WriteLine($"Loaded {messages.Count} chat messages.");
@@ -114,11 +116,10 @@ var analysisPrompt = promptBuilder.ToString();
 
 // Initialize AI client
 Console.WriteLine("Initializing AI client...");
-var chatClient = new ChatClient(
-    model,
-    new ApiKeyCredential(apiKey),
-    new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
-
+var chatClient = new ChatClient("gpt-4.1",
+            new ApiKeyCredential("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"),
+            new OpenAIClientOptions { Endpoint = new Uri("https://models.github.ai/inference") })
+            ;
 // Send request to LLM
 Console.WriteLine("Sending analysis request to LLM (this may take a while)...");
 Console.WriteLine();
@@ -158,3 +159,4 @@ catch (Exception ex)
 
 Console.WriteLine();
 Console.WriteLine("Analysis complete!");
+Console.ReadKey();
