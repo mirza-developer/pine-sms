@@ -3,6 +3,7 @@ using PineSms.Core.Contracts;
 using PineSms.Core.Entities;
 using PineSms.Core.Features.Order;
 using PineSms.Persistence.Services;
+using System.Globalization;
 
 namespace PineSms.Persistence.Repositories;
 
@@ -226,20 +227,7 @@ public class OrderRepository : IOrderService
 
         var result = new OrderStatisticsResult();
 
-        if (query.GroupBy == "day")
-        {
-            var grouped = orders.GroupBy(o => o.CreatedAt.Date)
-                .Select(g => new OrderStatisticsDataPoint
-                {
-                    Date = g.Key,
-                    Label = g.Key.ToString("yyyy/MM/dd"),
-                    Count = g.Count()
-                })
-                .OrderBy(d => d.Date)
-                .ToList();
-            result.DataPoints = grouped;
-        }
-        else if (query.GroupBy == "week")
+        if (query.GroupBy == "week")
         {
             var grouped = orders.GroupBy(o => GetWeekOfYear(o.CreatedAt))
                 .Select(g => new OrderStatisticsDataPoint
@@ -284,8 +272,8 @@ public class OrderRepository : IOrderService
 
     private static int GetWeekOfYear(DateTime date)
     {
-        var culture = System.Globalization.CultureInfo.CurrentCulture;
-        return culture.Calendar.GetWeekOfYear(date, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Saturday);
+        var calendar = new PersianCalendar();
+        return calendar.GetWeekOfYear(date, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Saturday);
     }
 
     private static string NormalizePhoneNumber(string phone)

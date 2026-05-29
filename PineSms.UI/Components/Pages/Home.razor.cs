@@ -72,7 +72,7 @@ public partial class Home
             var (startDate, endDate, groupBy) = GetDateRange();
             var statistics = await ApiClient.GetOrderStatisticsAsync(startDate, endDate, groupBy);
 
-            if (statistics == null || statistics.DataPoints == null)
+            if (statistics is null || statistics.DataPoints is null)
             {
                 errorMessage = "خطا در دریافت اطلاعات";
                 isLoading = false;
