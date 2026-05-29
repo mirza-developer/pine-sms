@@ -313,7 +313,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername;
 
-        await botClient.SendMessageAsync(targetChatId, satisfactionLog, ct);
+        await botClient.SendMessageAsync(targetChatId, satisfactionLog, CancellationToken.None);
     }
 
     private async Task HandleComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -335,7 +335,7 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         var order = await dbContext.CustomerOrder
                .Include(o => o.OrderStatus)
-               .FirstOrDefaultAsync(o => o.OrderCode == orderCode, ct);
+               .FirstOrDefaultAsync(o => o.OrderCode == orderCode, CancellationToken.None);
 
         if (order is not null)
         {
@@ -351,7 +351,7 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         complaintLog += userBaleUsername + "\n #case ";
 
-        await botClient.SendMessageAsync(targetChatId, complaintLog, ct);
+        await botClient.SendMessageAsync(targetChatId, complaintLog, CancellationToken.None);
     }
 
     private async Task HandleDefectiveProductAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -376,7 +376,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         defectiveLog += order + userBaleUsername + "\n #defective";
 
-        await botClient.SendMessageAsync(targetChatId, defectiveLog, ct);
+        await botClient.SendMessageAsync(targetChatId, defectiveLog, CancellationToken.None);
 
         // Forward the user's photo(s) to the support chat when the AI confirmed one was received
         if (hasPhoto)
@@ -385,7 +385,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             if (storedMessageIds.Count > 0)
             {
                 foreach (var msgId in storedMessageIds)
-                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, ct);
+                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, CancellationToken.None);
             }
             else
             {
@@ -416,7 +416,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         mismatchLog += order + userBaleUsername + "\n #mismatch";
 
-        await botClient.SendMessageAsync(targetChatId, mismatchLog, ct);
+        await botClient.SendMessageAsync(targetChatId, mismatchLog, CancellationToken.None);
 
         // Forward the user's photo(s) to the support chat when the AI confirmed one was received
         if (hasPhoto)
@@ -425,7 +425,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             if (storedMessageIds.Count > 0)
             {
                 foreach (var msgId in storedMessageIds)
-                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, ct);
+                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, CancellationToken.None);
             }
             else
             {
@@ -454,7 +454,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         returnedLog += order + userBaleUsername + "\n #returned";
 
-        await botClient.SendMessageAsync(targetChatId, returnedLog, ct);
+        await botClient.SendMessageAsync(targetChatId, returnedLog, CancellationToken.None);
     }
 
     private async Task HandleWholesaleAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -473,7 +473,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername + "\n #wholesale";
 
-        await botClient.SendMessageAsync(targetChatId, wholesaleLog, ct);
+        await botClient.SendMessageAsync(targetChatId, wholesaleLog, CancellationToken.None);
     }
 
     private async Task HandleNoOrderCodeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -494,7 +494,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"تاریخ پرداخت: {paymentDate}" +
             userBaleUsername + "\n #nocode";
 
-        await botClient.SendMessageAsync(targetChatId, noCodeLog, ct);
+        await botClient.SendMessageAsync(targetChatId, noCodeLog, CancellationToken.None);
     }
 
     private async Task HandleFailedPaymentAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -517,7 +517,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername + "\n #failedpayment";
 
-        await botClient.SendMessageAsync(targetChatId, failedPaymentLog, ct);
+        await botClient.SendMessageAsync(targetChatId, failedPaymentLog, CancellationToken.None);
     }
 
     private async Task HandleDelayedDeliveryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -538,7 +538,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         delayedLog += order + userBaleUsername + "\n #delayed";
 
-        await botClient.SendMessageAsync(targetChatId, delayedLog, ct);
+        await botClient.SendMessageAsync(targetChatId, delayedLog, CancellationToken.None);
     }
 
     private async Task HandleWrongSizeAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -561,7 +561,7 @@ public class BotUpdateHandler : IBotUpdateHandler
         var order = await LookupOrderAsync(orderCode, ct);
         wrongSizeLog += order + userBaleUsername + "\n #wrongsize";
 
-        await botClient.SendMessageAsync(targetChatId, wrongSizeLog, ct);
+        await botClient.SendMessageAsync(targetChatId, wrongSizeLog, CancellationToken.None);
     }
 
     private async Task HandleUnknownQueryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
@@ -578,7 +578,7 @@ public class BotUpdateHandler : IBotUpdateHandler
             $"توضیحات: {description}" +
             userBaleUsername + "\n #unknown";
 
-        await botClient.SendMessageAsync(targetChatId, unknownLog, ct);
+        await botClient.SendMessageAsync(targetChatId, unknownLog, CancellationToken.None);
     }
 
     private async Task<string> LookupOrderAsync(string? orderCode, CancellationToken ct)
@@ -590,7 +590,7 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         var order = await dbContext.CustomerOrder
             .Include(o => o.OrderStatus)
-            .FirstOrDefaultAsync(o => o.OrderCode == orderCode, ct);
+            .FirstOrDefaultAsync(o => o.OrderCode == orderCode, CancellationToken.None);
 
         if (order is not null)
         {
