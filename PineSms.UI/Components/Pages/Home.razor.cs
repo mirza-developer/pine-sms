@@ -31,6 +31,7 @@ public partial class Home
 
         AccessibleLinks = MenuAccessState.GetLinks().Where(l => l.Url != "/").ToList();
 
+        // Start loading chart data
         await LoadChartData();
 
         StateHasChanged();
@@ -50,12 +51,8 @@ public partial class Home
                 }
             ");
 
-            // Wait a bit for Chart.js to load, then reload chart
+            // Wait for Chart.js to load
             await Task.Delay(1000);
-            if (!isLoading && errorMessage == null)
-            {
-                await LoadChartData();
-            }
         }
     }
 
@@ -78,6 +75,8 @@ public partial class Home
             if (statistics == null || statistics.DataPoints == null)
             {
                 errorMessage = "خطا در دریافت اطلاعات";
+                isLoading = false;
+                StateHasChanged();
                 return;
             }
 
@@ -85,14 +84,19 @@ public partial class Home
             var labels = statistics.DataPoints.Select(d => ConvertToPersianLabel(d.Date, groupBy)).ToArray();
             var data = statistics.DataPoints.Select(d => d.Count).ToArray();
 
+            // Set loading to false first so the canvas gets rendered
+            isLoading = false;
+            StateHasChanged();
+
+            // Wait for the next render cycle to ensure canvas is in the DOM
+            await Task.Delay(100);
+
+            // Now render the chart
             await RenderChart(labels, data);
         }
         catch (Exception ex)
         {
             errorMessage = $"خطا: {ex.Message}";
-        }
-        finally
-        {
             isLoading = false;
             StateHasChanged();
         }
