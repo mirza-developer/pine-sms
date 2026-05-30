@@ -291,6 +291,20 @@ public class ApiClientService
         var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
         return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر حذف شد" : "خطا در حذف کاربر"));
     }
+
+    // ── Order Statistics ────────────────────────────────────────────────
+    public async Task<OrderStatisticsResult?> GetOrderStatisticsAsync(DateTime startDate, DateTime endDate, string groupBy = "day")
+    {
+        try
+        {
+            var url = $"api/order/statistics?startDate={startDate:yyyy-MM-ddTHH:mm:ss}&endDate={endDate:yyyy-MM-ddTHH:mm:ss}&groupBy={groupBy}";
+            return await httpClient.GetFromJsonAsync<OrderStatisticsResult>(url);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
 
 public class MessageResponse

@@ -3,6 +3,8 @@ using PineSms.Core.Contracts;
 using PineSms.Core.Entities;
 using PineSms.Core.Features.Order;
 using PineSms.Persistence.Services;
+using PineSms.Shared;
+using System.Globalization;
 
 namespace PineSms.Persistence.Repositories;
 
@@ -203,7 +205,7 @@ public class OrderRepository : IOrderService
         {
             return new()
             {
-                Found = false 
+                Found = false
             };
         }
 
@@ -215,6 +217,92 @@ public class OrderRepository : IOrderService
             PostalTrackingCode = order.PostalTrackingCode,
             UpdatedAt = order.UpdatedAt
         };
+    }
+
+    public async Task<OrderStatisticsResult> GetOrderStatistics(GetOrderStatisticsQuery query)
+    {
+        OrderStatisticsResult result = new();
+
+        var persianCalendar = new PersianCalendar();
+        var calendarGenerator = new PersianCalendarGenerator();
+
+        var currentYear = persianCalendar.GetYear(DateTime.Now);
+        var currentMonth = persianCalendar.GetMonth(DateTime.Now);
+        var currentYearCalendar = calendarGenerator.CreateYearCalendar(currentYear);
+
+        var baseQuery = dbContext.CustomerOrder
+            .Where(o => o.CreatedAt >= query.StartDate && o.CreatedAt <= query.EndDate);
+
+        // Single DB query: aggregate to daily counts, never fetch full rows
+        var dailyCounts = await baseQuery
+            .GroupBy(o => o.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var countByDate = dailyCounts.ToDictionary(d => d.Date, d => d.Count);
+
+        if (query.GroupBy == "week")
+        {
+            var currentMonthWeeks = currentYearCalendar.listMonths[currentMonth - 1];
+
+            foreach (var week in currentMonthWeeks.ListWeeks)
+            {
+                if (week.ListDays.Count == 0) continue;
+
+                var weekStart = week.ListDays.Min(d => d.GregorianDay.Date);
+                var count = week.ListDays.Sum(d =>
+                    countByDate.TryGetValue(d.GregorianDay.Date, out var c) ? c : 0);
+
+                result.DataPoints.Add(new OrderStatisticsDataPoint
+                {
+                    Date = weekStart,
+                    Label = $"هفته {week.WeekNumber +1}",
+                    Count = count
+                });
+            }
+        }
+        else if (query.GroupBy == "month")
+        {
+            foreach (var month in currentYearCalendar.listMonths)
+            {
+                var days = month.ListWeeks.SelectMany(w => w.ListDays).ToList();
+                
+                if (days.Count == 0) 
+                { 
+                    continue; 
+                }
+
+                var monthStart = days.Min(d => d.GregorianDay.Date);
+
+                var count = days.Sum(d =>
+                    countByDate.TryGetValue(d.GregorianDay.Date, out var c) ? c : 0);
+
+                result.DataPoints.Add(new OrderStatisticsDataPoint
+                {
+                    Date = monthStart,
+                    Label = PersianCalendarTools.PersianMonthName(month.MonthNumber),
+                    Count = count
+                });
+            }
+        }
+        else if (query.GroupBy == "year")
+        {
+            var yearGroups = dailyCounts
+                .GroupBy(d => persianCalendar.GetYear(d.Date))
+                .OrderBy(g => g.Key);
+
+            foreach (var yearGroup in yearGroups)
+            {
+                result.DataPoints.Add(new OrderStatisticsDataPoint
+                {
+                    Date = yearGroup.Min(d => d.Date),
+                    Label = yearGroup.Key.ToString(),
+                    Count = yearGroup.Sum(d => d.Count)
+                });
+            }
+        }
+
+        return result;
     }
 
     private static string NormalizePhoneNumber(string phone)
