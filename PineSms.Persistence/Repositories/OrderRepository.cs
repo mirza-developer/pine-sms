@@ -3,6 +3,7 @@ using PineSms.Core.Contracts;
 using PineSms.Core.Entities;
 using PineSms.Core.Features.Order;
 using PineSms.Persistence.Services;
+using PineSms.Shared;
 using System.Globalization;
 
 namespace PineSms.Persistence.Repositories;
@@ -220,81 +221,85 @@ public class OrderRepository : IOrderService
 
     public async Task<OrderStatisticsResult> GetOrderStatistics(GetOrderStatisticsQuery query)
     {
-        var orders = await dbContext.CustomerOrder
-            .Where(o => o.CreatedAt >= query.StartDate && o.CreatedAt <= query.EndDate)
-            .OrderBy(o => o.CreatedAt)
+        OrderStatisticsResult result = new();
+
+        var persianCalendar = new PersianCalendar();
+        var calendarGenerator = new PersianCalendarGenerator();
+
+        var currentYear = persianCalendar.GetYear(DateTime.Now);
+        var currentMonth = persianCalendar.GetMonth(DateTime.Now);
+        var currentYearCalendar = calendarGenerator.CreateYearCalendar(currentYear);
+
+        var baseQuery = dbContext.CustomerOrder
+            .Where(o => o.CreatedAt >= query.StartDate && o.CreatedAt <= query.EndDate);
+
+        // Single DB query: aggregate to daily counts, never fetch full rows
+        var dailyCounts = await baseQuery
+            .GroupBy(o => o.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync();
 
-        var result = new OrderStatisticsResult();
+        var countByDate = dailyCounts.ToDictionary(d => d.Date, d => d.Count);
 
         if (query.GroupBy == "week")
         {
-            // Group orders by week within the month
-            // Each week starts on Saturday (Persian week start)
-            var calendar = new PersianCalendar();
-            var grouped = orders
-                .GroupBy(o => {
-                    var date = o.CreatedAt;
-                    var year = calendar.GetYear(date);
-                    var month = calendar.GetMonth(date);
-                    var day = calendar.GetDayOfMonth(date);
+            var currentMonthWeeks = currentYearCalendar.listMonths[currentMonth - 1];
 
-                    // Find the first day of the month
-                    var firstDayOfMonth = calendar.ToDateTime(year, month, 1, 0, 0, 0, 0);
-                    var firstDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+            foreach (var week in currentMonthWeeks.ListWeeks)
+            {
+                if (week.ListDays.Count == 0) continue;
 
-                    // Calculate week number within the month (1-based)
-                    // Saturday = 6, so we want Saturday to be the start of week
-                    var daysFromMonthStart = day - 1;
-                    var daysToFirstSaturday = (6 - firstDayOfWeek + 7) % 7;
+                var weekStart = week.ListDays.Min(d => d.GregorianDay.Date);
+                var count = week.ListDays.Sum(d =>
+                    countByDate.TryGetValue(d.GregorianDay.Date, out var c) ? c : 0);
 
-                    int weekInMonth;
-                    if (daysFromMonthStart < daysToFirstSaturday)
-                    {
-                        weekInMonth = 1; // First partial week
-                    }
-                    else
-                    {
-                        weekInMonth = 1 + ((daysFromMonthStart - daysToFirstSaturday) / 7) + 1;
-                    }
-
-                    return new { Year = year, Month = month, WeekInMonth = weekInMonth };
-                })
-                .Select(g => new OrderStatisticsDataPoint
+                result.DataPoints.Add(new OrderStatisticsDataPoint
                 {
-                    Date = g.First().CreatedAt.Date,
-                    Label = $"هفته {g.Key.WeekInMonth}",
-                    Count = g.Count()
-                })
-                .OrderBy(d => d.Date)
-                .ToList();
-            result.DataPoints = grouped;
+                    Date = weekStart,
+                    Label = $"هفته {week.WeekNumber +1}",
+                    Count = count
+                });
+            }
         }
         else if (query.GroupBy == "month")
         {
-            var grouped = orders.GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
-                .Select(g => new OrderStatisticsDataPoint
+            foreach (var month in currentYearCalendar.listMonths)
+            {
+                var days = month.ListWeeks.SelectMany(w => w.ListDays).ToList();
+                
+                if (days.Count == 0) 
+                { 
+                    continue; 
+                }
+
+                var monthStart = days.Min(d => d.GregorianDay.Date);
+
+                var count = days.Sum(d =>
+                    countByDate.TryGetValue(d.GregorianDay.Date, out var c) ? c : 0);
+
+                result.DataPoints.Add(new OrderStatisticsDataPoint
                 {
-                    Date = new DateTime(g.Key.Year, g.Key.Month, 1),
-                    Label = $"{g.Key.Year}/{g.Key.Month:D2}",
-                    Count = g.Count()
-                })
-                .OrderBy(d => d.Date)
-                .ToList();
-            result.DataPoints = grouped;
+                    Date = monthStart,
+                    Label = PersianCalendarTools.PersianMonthName(month.MonthNumber),
+                    Count = count
+                });
+            }
         }
         else if (query.GroupBy == "year")
         {
-            var grouped = orders.GroupBy(o => o.CreatedAt.Year)
-                .Select(g => new OrderStatisticsDataPoint
+            var yearGroups = dailyCounts
+                .GroupBy(d => persianCalendar.GetYear(d.Date))
+                .OrderBy(g => g.Key);
+
+            foreach (var yearGroup in yearGroups)
+            {
+                result.DataPoints.Add(new OrderStatisticsDataPoint
                 {
-                    Date = new DateTime(g.Key, 1, 1),
-                    Label = g.Key.ToString(),
-                    Count = g.Count()
-                })
-                .OrderBy(d => d.Date)
-                .ToList();
-            result.DataPoints = grouped;
+                    Date = yearGroup.Min(d => d.Date),
+                    Label = yearGroup.Key.ToString(),
+                    Count = yearGroup.Sum(d => d.Count)
+                });
+            }
         }
 
         return result;

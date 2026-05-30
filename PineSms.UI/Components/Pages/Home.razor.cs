@@ -51,28 +51,30 @@ public partial class Home
         try
         {
             var (startDate, endDate, groupBy) = GetDateRange();
+            
             var statistics = await ApiClient.GetOrderStatisticsAsync(startDate, endDate, groupBy);
 
             if (statistics is null || statistics.DataPoints is null)
             {
                 errorMessage = "خطا در دریافت اطلاعات";
+              
                 isLoading = false;
+               
                 StateHasChanged();
+              
                 return;
             }
 
-            // Convert to Persian calendar labels
-            var labels = statistics.DataPoints.Select(d => ConvertToPersianLabel(d.Date, groupBy)).ToArray();
-            var data = statistics.DataPoints.Select(d => d.Count).ToArray();
-
-            // Set loading to false first so the canvas gets rendered
+            var labels = statistics.DataPoints.Select(d => d.Label).ToList();
+           
+            var data = statistics.DataPoints.Select(d => d.Count).ToList();
+          
             isLoading = false;
+
             StateHasChanged();
 
-            // Wait for the next render cycle to ensure canvas is in the DOM
             await Task.Delay(100);
 
-            // Now render the chart
             await RenderChart(labels, data);
         }
         catch (Exception ex)
@@ -142,7 +144,7 @@ public partial class Home
         }
     }
 
-    private async Task RenderChart(string[] labels, int[] data)
+    private async Task RenderChart(List<string> labels, List<int> data)
     {
         try
         {
