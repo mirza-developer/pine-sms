@@ -184,9 +184,70 @@ When a customer sends a photo (e.g. to show a defective product):
 
 | Class | Type | Responsibility |
 |---|---|---|
-| `BaleBotWorker` | `BackgroundService` | Long-polls `getUpdates` (30 s timeout) and dispatches each update to `IBotUpdateHandler` |
+| `BaleBotWorker` | `BackgroundService` | Long-polls `getUpdates` (30 s timeout), dispatches each update concurrently to `IBotUpdateHandler` using dual-semaphore concurrency control |
 | `BotChatMessageSaverWorker` | `BackgroundService` | Drains `BotChatMessageQueue` and persists each entry to the `BotChatMessage` table |
 | `PhotoMessageStoreCleanupWorker` | `BackgroundService` | Periodically evicts expired photo entries from `PhotoMessageStore` |
+
+---
+
+## Concurrent Processing Model
+
+`BaleBotWorker` processes updates from the same `getUpdates` batch concurrently using a **dual-semaphore** strategy.
+
+### Why concurrency is needed
+
+Each update requires at minimum one AI API call (1–5 s round-trip). Without concurrency every user in a batch waits behind every other user. With 10 simultaneous users, the last user would wait up to 50 s before their message is even sent to the AI.
+
+### Dual-semaphore design
+
+```
+getUpdates batch  →  [update A (user 1), update B (user 2), update C (user 1), ...]
+                             │                   │                   │
+                             ▼                   ▼                   ▼
+                      ProcessUpdateAsync   ProcessUpdateAsync   ProcessUpdateAsync
+                             │                   │                   │
+                    ┌────────▼────────┐          │          ┌────────▼────────┐
+                    │ globalSemaphore │          │          │ globalSemaphore │
+                    │    (cap = 10)   │          │          │    (cap = 10)   │
+                    └────────┬────────┘          │          └────────┬────────┘
+                             │                   │                   │
+                    ┌────────▼────────┐          │          ┌────────▼────────┐
+                    │ perUserSemaphore│          │          │ perUserSemaphore│
+                    │  user 1 (cap=1) │          │          │  user 1 (cap=1) │◄── waits for A
+                    └────────┬────────┘          │          └────────┬────────┘
+                             │                   │                   │
+                         handler A           handler B           handler C
+                         (user 1)            (user 2)         (user 1, queued)
+```
+
+| Semaphore | Capacity | Purpose |
+|---|---|---|
+| `globalSemaphore` | 10 | Caps total in-flight handlers across all users. Prevents thread-pool exhaustion, DB connection-pool exhaustion, and runaway memory growth under load. |
+| `perUserSemaphores[chatId]` | 1 | Serialises all messages from the **same** user. Guarantees that if a user sends two messages quickly, their second message is processed only after the first is fully complete — preserving AI session ordering and preventing mixed-up responses. |
+
+### Offset safety
+
+Offset advancement (`offset = updateId + 1`) is performed **synchronously** in a dedicated loop **before** any concurrent task is launched. This means:
+- No update is ever double-processed even if a handler throws.
+- The next `getUpdates` call uses the correct offset regardless of handler execution order.
+
+### Cancellation token discipline
+
+`stoppingToken` (the host shutdown token) is used as follows:
+
+| Operation | Token used | Reason |
+|---|---|---|
+| `GetUpdatesAsync` | `stoppingToken` | Must stop polling when host shuts down |
+| `globalSemaphore.WaitAsync` | `stoppingToken` | Must not block shutdown |
+| `perUserSemaphore.WaitAsync` | `stoppingToken` | Must not block shutdown |
+| `handler.HandleAsync` → user-facing `SendMessageAsync` | `stoppingToken` (as `ct`) | Acceptable to cancel; user hasn't received a reply yet |
+| `handler.HandleAsync` → group `SendMessageAsync` | `CancellationToken.None` | **Must complete** — user already received their confirmation; dropping the group notification would lose the support ticket |
+| `handler.HandleAsync` → `ForwardMessageAsync` (photos) | `CancellationToken.None` | Same reason as group sends |
+| `LookupOrderAsync` → `FirstOrDefaultAsync` | `CancellationToken.None` | DB read must not be abandoned mid-flight; abandoning it would leave the message half-built |
+
+### Tuning
+
+`MaxConcurrentUpdates` is defined as a constant in `BaleBotWorker.cs`. The value `10` is appropriate for a boutique-scale bot. Increase it only if profiling shows the AI calls are the bottleneck and server resources (DB connections, memory) support more concurrency.
 
 ---
 

@@ -1,2 +1,49 @@
 @page "/"
 @using PineSms.UI.Services
+@using PineSms.Core.Features.Order
+@using System.Globalization
+
+<PageTitle>صفحه اصلی</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3>آمار سفارشات</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">بازه زمانی:</label>
+                            <select class="form-select" @bind="selectedRange" @bind:after="OnRangeChanged">
+                                <option value="weekly">هفتگی در ماه جاری</option>
+                                <option value="monthly">ماهانه در سال جاری</option>
+                                <option value="yearly">سالانه در ۳ سال اخیر</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">در حال بارگذاری...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+                    else
+                    {
+                        <div style="position: relative; height: 400px;">
+                            <canvas id="orderChart"></canvas>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

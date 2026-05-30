@@ -117,7 +117,7 @@ var analysisPrompt = promptBuilder.ToString();
 // Initialize AI client
 Console.WriteLine("Initializing AI client...");
 var chatClient = new ChatClient("gpt-4.1",
-            new ApiKeyCredential("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"),
+            new ApiKeyCredential(""),
             new OpenAIClientOptions { Endpoint = new Uri("https://models.github.ai/inference") })
             ;
 // Send request to LLM

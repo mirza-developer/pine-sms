@@ -1,5 +1,4 @@
 ﻿@page "/"
-@inject OrderTrackingService TrackingService
 
 <PageTitle>پیگیری سفارش</PageTitle>
 
@@ -66,41 +65,9 @@
                 }
                 <div class="result-row">
                     <span class="result-label">آخرین به‌روزرسانی</span>
-                    <span class="result-value">@result.UpdatedAt.ToString("yyyy/MM/dd HH:mm")</span>
+                    <span class="result-value">@PineSms.Shared.PersianCalendarTools.GregorianToPersian(result.UpdatedAt) @result.UpdatedAt.ToString("HH:mm")</span>
                 </div>
             </div>
         }
     </div>
 </div>
-
-@code {
-    private string orderCode = string.Empty;
-    private bool isLoading;
-    private string? errorMessage;
-    private OrderTrackResult? result;
-
-    private async Task TrackOrder()
-    {
-        if (string.IsNullOrWhiteSpace(orderCode))
-            return;
-
-        isLoading = true;
-        errorMessage = null;
-        result = null;
-
-        var (success, trackResult, error) = await TrackingService.TrackAsync(orderCode);
-
-        if (success)
-            result = trackResult;
-        else
-            errorMessage = error;
-
-        isLoading = false;
-    }
-
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-            await TrackOrder();
-    }
-}
