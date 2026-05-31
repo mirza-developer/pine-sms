@@ -23,7 +23,7 @@ public class OrderRepository : IOrderService
     {
         NotifyOrderResult result = new();
 
-        var phone = NormalizePhoneNumber(command.CustomerPhoneNumber);
+        var phone = command.CustomerPhoneNumber.ToNormalizedPhoneNumber();
 
         if (phone.Length > 10)
         {
@@ -197,9 +197,20 @@ public class OrderRepository : IOrderService
 
     public async Task<TrackOrderResult> GetOrderByCode(string orderCode)
     {
-        var order = await dbContext.CustomerOrder
-            .Include(o => o.OrderStatus)
-            .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
+        CustomerOrder? order;
+
+        order = await dbContext.CustomerOrder
+                               .Include(o => o.OrderStatus)
+                               .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
+
+        if (order is null)
+        {
+            order = await dbContext.CustomerOrder
+                               .Include(o => o.OrderStatus)
+                               .Include(o => o.Customer)
+                               .OrderByDescending(o => o.CreatedAt)  
+                               .FirstOrDefaultAsync(o => o.Customer.PhoneNumber == orderCode.ToNormalizedPhoneNumber());
+        }
 
         if (order is null)
         {
@@ -303,19 +314,5 @@ public class OrderRepository : IOrderService
         }
 
         return result;
-    }
-
-    private static string NormalizePhoneNumber(string phone)
-    {
-        phone = phone.Trim();
-        if (phone.StartsWith("+98"))
-            phone = phone[3..];
-        else if (phone.StartsWith("0098"))
-            phone = phone[4..];
-        else if (phone.StartsWith("98") && phone.Length == 12)
-            phone = phone[2..];
-        else if (phone.StartsWith("0"))
-            phone = phone[1..];
-        return phone;
     }
 }

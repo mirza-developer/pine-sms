@@ -1,0 +1,57 @@
+<header class="site-header" id="header-main" role="banner">
+    <div class="header-main-bar" id="header-main">
+        <div class="container header-inner">
+            <div class="header-logo">
+                <a href="https://ananas-collectionn.com/" target="_blank" rel="noopener" class="logo-link">
+                    <img src="https://ananas-collectionn.com/wp-content/uploads/2024/12/ananas-logo.png"
+                         class="site-logo" alt="مزون اناناس" />
+                </a>
+            </div>
+
+            <nav class="header-nav" role="navigation" aria-label="منوی اصلی">
+                <ul class="primary-menu">
+                    <li><a href="https://ananas-collectionn.com/" target="_blank" rel="noopener">صفحه اصلی</a></li>
+                    <li><a href="https://ananas-collectionn.com/product-category/%d8%aa%db%8c%d8%b4%d8%b1%d8%aa-%d9%88-%d8%a8%d8%a7%d8%af%db%8c/" target="_blank" rel="noopener">تیشرت و بادی</a></li>
+                    <li><a href="https://ananas-collectionn.com/product-category/%d9%be%d8%a7%d9%81%d8%b1-%d9%88-%da%a9%d8%a7%d9%be%d8%b4%d9%86/" target="_blank" rel="noopener">پافر و کاپشن</a></li>
+                    <li><a href="https://ananas-collectionn.com/product-category/%d8%af%d9%88%d8%b1%d8%b3-%d9%88-%d9%87%d9%88%d8%af%db%8c-%d9%88-%d8%b3%d9%88%db%8c%db%8c%d8%b4%d8%b1%d8%aa/" target="_blank" rel="noopener">دورس و هودی</a></li>
+                    <li><a href="https://ananas-collectionn.com/product-category/%d9%85%d8%ac%d9%84%d8%b3%db%8c/" target="_blank" rel="noopener">مجلسی</a></li>
+                    <li><a href="https://ananas-collectionn.com/product-category/%d8%b4%d9%84%d9%88%d8%a7%d8%b1/" target="_blank" rel="noopener">شلوار</a></li>
+                    <li><a href="https://ananas-collectionn.com/product-category/%d8%b3%d8%aa/" target="_blank" rel="noopener">ست</a></li>
+                    <li><a href="https://ananas-collectionn.com/product-category/%d9%85%d8%a7%d9%86%d8%aa%d9%88-%d9%88-%d8%b4%d9%88%d9%85%db%8c%d8%b2/" target="_blank" rel="noopener">مانتو و شومیز</a></li>
+                    <li><a href="https://ananas-collectionn.com/order-tracking-2/" target="_blank" rel="noopener" class="menu-order-track">پیگیری سفارش</a></li>
+                </ul>
+            </nav>
+
+            <button class="header-menu-toggle" type="button" aria-label="منو" aria-expanded="false"
+                    @onclick="ToggleMenu">
+                <span class="menu-label">منو</span>
+                <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                    <path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <nav class="header-nav-mobile @(menuOpen ? "is-open" : "")" role="navigation" aria-label="منوی موبایل">
+        <div class="container">
+            <ul class="primary-menu">
+                <li><a href="https://ananas-collectionn.com/" target="_blank" rel="noopener" @onclick="CloseMenu">صفحه اصلی</a></li>
+                <li><a href="https://ananas-collectionn.com/product-category/%d8%aa%db%8c%d8%b4%d8%b1%d8%aa-%d9%88-%d8%a8%d8%a7%d8%af%db%8c/" target="_blank" rel="noopener" @onclick="CloseMenu">تیشرت و بادی</a></li>
+                <li><a href="https://ananas-collectionn.com/product-category/%d9%be%d8%a7%d9%81%d8%b1-%d9%88-%da%a9%d8%a7%d9%be%d8%b4%d9%86/" target="_blank" rel="noopener" @onclick="CloseMenu">پافر و کاپشن</a></li>
+                <li><a href="https://ananas-collectionn.com/product-category/%d8%af%d9%88%d8%b1%d8%b3-%d9%88-%d9%87%d9%88%d8%af%db%8c-%d9%88-%d8%b3%d9%88%db%8c%db%8c%d8%b4%d8%b1%d8%aa/" target="_blank" rel="noopener" @onclick="CloseMenu">دورس و هودی</a></li>
+                <li><a href="https://ananas-collectionn.com/product-category/%d9%85%d8%ac%d9%84%d8%b3%db%8c/" target="_blank" rel="noopener" @onclick="CloseMenu">مجلسی</a></li>
+                <li><a href="https://ananas-collectionn.com/product-category/%d8%b4%d9%84%d9%88%d8%a7%d8%b1/" target="_blank" rel="noopener" @onclick="CloseMenu">شلوار</a></li>
+                <li><a href="https://ananas-collectionn.com/product-category/%d8%b3%d8%aa/" target="_blank" rel="noopener" @onclick="CloseMenu">ست</a></li>
+                <li><a href="https://ananas-collectionn.com/product-category/%d9%85%d8%a7%d9%86%d8%aa%d9%88-%d9%88-%d8%b4%d9%88%d9%85%db%8c%d8%b2/" target="_blank" rel="noopener" @onclick="CloseMenu">مانتو و شومیز</a></li>
+                <li><a href="https://tracking.ananas-collectionn.com/" target="_blank" rel="noopener" class="menu-order-track" @onclick="CloseMenu">پیگیری سفارش</a></li>
+            </ul>
+        </div>
+    </nav>
+</header>
+
+@code {
+    private bool menuOpen = false;
+
+    private void ToggleMenu() => menuOpen = !menuOpen;
+    private void CloseMenu() => menuOpen = false;
+}

@@ -2,72 +2,107 @@
 
 <PageTitle>پیگیری سفارش</PageTitle>
 
-<div class="page">
-    <div class="page-header">
-        <h1>پیگیری سفارش</h1>
-        <p>کد سفارش خود را وارد کنید تا وضعیت آن را مشاهده کنید.</p>
-    </div>
+<div class="ot-wrap">
+    <div class="container">
 
-    <div class="card">
-        <div class="form-group">
-            <label for="orderCode">کد سفارش</label>
-            <input id="orderCode"
-                   class="form-control"
-                   type="text"
-                   placeholder="مثال: 12345"
-                   @bind="orderCode"
-                   @bind:event="oninput"
-                   @onkeydown="OnKeyDown"
-                   disabled="@isLoading" />
+        <nav class="ot-breadcrumbs" aria-label="مسیر">
+            <ol>
+                <li><a href="https://ananas-collectionn.com/" target="_blank" rel="noopener">خانه</a></li>
+                <li><span>پیگیری سفارش</span></li>
+            </ol>
+        </nav>
+
+        <h1 class="ot-page-title">پیگیری سفارش</h1>
+
+        <div class="ot-intro">
+            <p>با تشکر از خرید و اعتماد شما به مجموعه اناناس کالکشن</p>
+            <p>
+                <strong>مرحله اول:</strong> لطفاً
+                <span class="ot-highlight">پس از گذشت ۷۲ ساعت</span>
+                از ثبت سفارش، با نوشتن شماره سفارش در باکس زیر، کد رهگیری پستی خود را دریافت کنید.
+            </p>
+            <p>
+                <strong>مرحله دوم:</strong> پس از
+                <span class="ot-highlight">دریافت کد مرسوله ۲۴ رقمی</span>،
+                از طریق سامانه رهگیری پست از وضعیت بسته خود مطلع شوید.
+            </p>
+            <p class="ot-warning">
+                چنانچه بسته شما بعد از ۸ روز کاری (روزهای جمعه و تعطیلات رسمی روز کاری نمی‌باشد) نرسید، فقط از طریق پیام‌رسان بله @@ananas_support_bot با ما در ارتباط باشید. تماس تلفنی جوابگویی نداریم.
+            </p>
         </div>
 
-        <button class="btn btn-primary" @onclick="TrackOrder" disabled="@(isLoading || string.IsNullOrWhiteSpace(orderCode))">
-            @if (isLoading)
-            {
-                <span class="spinner sm"></span>
-                <span>در حال جستجو...</span>
-            }
-            else
-            {
-                <span>پیگیری سفارش</span>
-            }
-        </button>
+        <div class="nk-track-container">
+            <h2 class="nk-track-title">پیگیری سفارش</h2>
 
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger">@errorMessage</div>
-        }
+            <div class="nk-track-form">
+                <input id="orderCode"
+                       class="nk-track-input"
+                       type="text"
+                       placeholder="شماره سفارش یا موبایل یا ایمیل خود را وارد کنید"
+                       @bind="orderCode"
+                       @bind:event="oninput"
+                       @onkeydown="OnKeyDown"
+                       disabled="@isLoading" />
 
-        @if (result is not null)
-        {
-            <div class="result-panel">
-                <h2>نتیجه پیگیری</h2>
-                <div class="result-row">
-                    <span class="result-label">کد سفارش</span>
-                    <span class="result-value">@result.OrderCode</span>
-                </div>
-                <div class="result-row">
-                    <span class="result-label">وضعیت</span>
-                    <span class="result-value"><span class="badge">@result.StatusTitle</span></span>
-                </div>
-                @if (!string.IsNullOrWhiteSpace(result.PostalTrackingCode))
-                {
-                    <div class="result-row">
-                        <span class="result-label">کد رهگیری پستی</span>
-                        <span class="result-value">@result.PostalTrackingCode</span>
+                <button class="nk-track-btn" @onclick="TrackOrder" disabled="@(isLoading || string.IsNullOrWhiteSpace(orderCode))">
+                    @if (isLoading)
+                    {
+                        <span class="spinner sm"></span>
+                        <span>در حال جستجو...</span>
+                    }
+                    else
+                    {
+                        <span>پیگیری سفارش</span>
+                    }
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="nk-track-alert">@errorMessage</div>
+            }
+
+            @if (result is not null)
+            {
+                <div class="nk-track-result">
+                    <h3 class="nk-track-result-title">نتیجه پیگیری</h3>
+
+                    <div class="nk-track-result-row">
+                        <span class="nk-track-result-label">کد سفارش</span>
+                        <span class="nk-track-result-value ot-ltr">@result.OrderCode</span>
                     </div>
-                    <div class="result-row">
-                        <span class="result-label">کد را در سایت پست وارد کنید تا وضعیت مرسوله را ببینید</span>
-                        <span class="result-value">
-                            <a href="https://tracking.post.ir/" target="_blank" class="badge">سایت پست</a>
+
+                    <div class="nk-track-result-row">
+                        <span class="nk-track-result-label">وضعیت</span>
+                        <span class="nk-track-result-value">
+                            <span class="nk-track-status-badge">@result.StatusTitle</span>
                         </span>
                     </div>
-                }
-                <div class="result-row">
-                    <span class="result-label">آخرین به‌روزرسانی</span>
-                    <span class="result-value">@PineSms.Shared.PersianCalendarTools.GregorianToPersian(result.UpdatedAt) @result.UpdatedAt.ToString("HH:mm")</span>
+
+                    @if (!string.IsNullOrWhiteSpace(result.PostalTrackingCode))
+                    {
+                        <div class="nk-track-result-row">
+                            <span class="nk-track-result-label">کد رهگیری پستی</span>
+                            <span class="nk-track-result-value ot-ltr ot-tracking-code">@result.PostalTrackingCode</span>
+                        </div>
+                        <div class="nk-track-result-row">
+                            <span class="nk-track-result-value">
+                                <span class="nk-track-status-badge">
+                                    کد بالا را در سامانه رهگیری پست وارد کنید تا وضعیت بسته خود را مشاهده کنید
+                                </span>
+                            </span>
+                        </div>
+                    }
                 </div>
-            </div>
-        }
+            }
+        </div>
+
+        <a href="https://tracking.post.ir/" target="_blank" rel="noopener" class="ot-post-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            ورود به سامانه رهگیری مرسولات پستی
+        </a>
+
     </div>
 </div>

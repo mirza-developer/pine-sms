@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using PineSms.OrderTrack.Services;
+using PineSms.Shared;
 
 namespace PineSms.OrderTrack.Pages;
 public partial class Home
@@ -25,7 +26,7 @@ public partial class Home
        
         result = null;
 
-        var (success, trackResult, error) = await TrackingService.TrackAsync(orderCode);
+        var (success, trackResult, error) = await TrackingService.TrackAsync(orderCode.ToEnglishDigits());
 
         if (success)
         {

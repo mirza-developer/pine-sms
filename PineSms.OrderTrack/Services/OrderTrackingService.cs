@@ -10,7 +10,7 @@ public class OrderTrackingService(HttpClient httpClient)
         {
             var response = await httpClient.GetAsync($"api/order/track/{Uri.EscapeDataString(orderCode.Trim())}");
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                return (false, null, "سفارشی با این کد یافت نشد");
+                return (false, null, "لطفا صبوری کنید ۷۲ ساعت کاری از سفارشتون بگذره دوباره امتحان کنید");
 
             if (!response.IsSuccessStatusCode)
                 return (false, null, $"خطا در دریافت اطلاعات (کد {(int)response.StatusCode})");
