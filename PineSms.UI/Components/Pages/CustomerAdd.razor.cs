@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using PineSms.Core.Features.Customer;
+using PineSms.Shared;
 using PineSms.UI.Services;
 
 namespace PineSms.UI.Components.Pages;
@@ -57,7 +58,7 @@ public partial class CustomerAdd
                 command.BirthYear = result.Customer.BirthYear;
                 command.IsTester = result.Customer.IsTester;
                 command.BirthDate = result.Customer.BirthDate.HasValue
-                    ? PersianDateHelper.ToPersianDate(result.Customer.BirthDate.Value)
+                    ? PersianCalendarTools.GregorianToPersian(result.Customer.BirthDate.Value)
                     : null;
             }
             else

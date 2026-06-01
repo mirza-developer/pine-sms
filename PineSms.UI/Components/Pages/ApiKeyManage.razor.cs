@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using PineSms.Core.Entities;
 using PineSms.Core.Features.ApiKey;
+using PineSms.Shared;
 using PineSms.UI.Services;
 
 namespace PineSms.UI.Components.Pages;
@@ -46,7 +47,7 @@ public partial class ApiKeyManage
     private void OpenAddModal()
     {
         createCommand = new CreateApiKeyCommand { ExpireAt = DateTime.Now.AddYears(1) };
-        expireAtPersian = PersianDateHelper.ToPersianDate(createCommand.ExpireAt);
+        expireAtPersian = PersianCalendarTools.GregorianToPersian(createCommand.ExpireAt);
         newlyCreatedKey = string.Empty;
         showModal = true;
     }
@@ -59,13 +60,14 @@ public partial class ApiKeyManage
 
     private async Task HandleCreate()
     {
-        var parsedDate = PersianDateHelper.FromPersianDate(expireAtPersian);
-        if (parsedDate == null)
+        DateTime parsedDate;
+        try { parsedDate = PersianCalendarTools.PersianToGregorian(expireAtPersian!); }
+        catch
         {
             NotificationService.ShowError("تاریخ انقضا معتبر نیست");
             return;
         }
-        createCommand.ExpireAt = parsedDate.Value;
+        createCommand.ExpireAt = parsedDate;
         isSaving = true;
         try
         {
