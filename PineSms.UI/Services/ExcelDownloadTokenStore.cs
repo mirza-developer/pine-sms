@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using PineSms.Core.Dtos;
 
 namespace PineSms.UI.Services;
 

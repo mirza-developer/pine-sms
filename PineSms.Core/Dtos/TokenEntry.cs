@@ -1,4 +1,4 @@
-namespace PineSms.UI.Services;
+namespace PineSms.Core.Dtos;
 
 /// <summary>
 /// Represents a token entry for Excel download.

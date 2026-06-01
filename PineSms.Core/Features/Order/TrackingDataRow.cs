@@ -1,4 +1,4 @@
-namespace PineSms.UI.Features.TrackingImport;
+namespace PineSms.Core.Features.Order;
 
 /// <summary>
 /// Represents a row of tracking data from imported Excel file.
