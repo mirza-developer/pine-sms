@@ -23,9 +23,9 @@ public class CustomerController : ControllerBase
     public async Task<IActionResult> InsertCustomer([FromBody] InsertCustomerCommand command)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
-        var (success, message) = await customerService.InsertCustomer(command, userId);
-        if (!success) return BadRequest(new { message });
-        return Ok(new { message });
+        var result = await customerService.InsertCustomer(command, userId);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 
     [HttpPost("import")]
@@ -48,9 +48,9 @@ public class CustomerController : ControllerBase
     [HttpGet("byphone/{phone}")]
     public async Task<IActionResult> GetByPhone(string phone)
     {
-        var customer = await customerService.GetCustomerByPhoneNumber(phone);
-        if (customer == null) return NotFound(new { message = "مشتری با این شماره یافت نشد" });
-        return Ok(customer);
+        var result = await customerService.GetCustomerByPhoneNumber(phone);
+        if (result.Customer == null) return NotFound(new { message = result.ErrorMessage ?? "مشتری با این شماره یافت نشد" });
+        return Ok(result.Customer);
     }
 
     [HttpPut("{id:int}")]
