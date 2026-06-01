@@ -67,16 +67,16 @@ public partial class OrderStatusManage
         isSaving = true;
         try
         {
-            var (success, message) = await ApiClient.UpsertOrderStatusAsync(editCommand);
-            if (success)
+            var result = await ApiClient.UpsertOrderStatusAsync(editCommand);
+            if (result.Success)
             {
-                NotificationService.ShowSuccess(message);
+                NotificationService.ShowSuccess(result.Message);
                 CloseModal();
                 await LoadStatuses();
             }
             else
             {
-                NotificationService.ShowError(message);
+                NotificationService.ShowError(result.Message);
             }
         }
         catch
@@ -97,16 +97,16 @@ public partial class OrderStatusManage
         isSaving = true;
         try
         {
-            var (success, message) = await ApiClient.DeleteOrderStatusAsync(deleteTarget.Id);
-            if (success)
+            var result = await ApiClient.DeleteOrderStatusAsync(deleteTarget.Id);
+            if (result.Success)
             {
-                NotificationService.ShowSuccess(message);
+                NotificationService.ShowSuccess(result.Message);
                 deleteTarget = null;
                 await LoadStatuses();
             }
             else
             {
-                NotificationService.ShowError(message);
+                NotificationService.ShowError(result.Message);
             }
         }
         catch

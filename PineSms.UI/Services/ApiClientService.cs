@@ -61,13 +61,13 @@ public class ApiClientService
         }
     }
 
-    public async Task<(bool success, string message)> InsertCustomerAsync(InsertCustomerCommand command)
+    public async Task<InsertCustomerResult> InsertCustomerAsync(InsertCustomerCommand command)
     {
         var response = await httpClient.PostAsJsonAsync("api/customer", command);
         if (response.IsSuccessStatusCode)
-            return (true, "مشتری با موفقیت ثبت شد");
+            return new InsertCustomerResult { Success = true, Message = "مشتری با موفقیت ثبت شد" };
         var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (false, error?.Message ?? "خطا در ثبت مشتری");
+        return new InsertCustomerResult { Success = false, Message = error?.Message ?? "خطا در ثبت مشتری" };
     }
 
     public async Task<ImportCustomersResult?> ImportCustomersAsync(ImportCustomersCommand command)
@@ -102,7 +102,7 @@ public class ApiClientService
         }
     }
 
-    public async Task<(PineSms.Core.Entities.Customer? customer, string? errorMessage)> GetCustomerByPhoneAsync(string phoneNumber)
+    public async Task<GetCustomerByPhoneResult> GetCustomerByPhoneAsync(string phoneNumber)
     {
         try
         {
@@ -110,36 +110,36 @@ public class ApiClientService
             if (response.IsSuccessStatusCode)
             {
                 var customer = await response.Content.ReadFromJsonAsync<PineSms.Core.Entities.Customer>();
-                return (customer, null);
+                return new GetCustomerByPhoneResult { Customer = customer };
             }
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                return (null, "مشتری با این شماره یافت نشد");
-            return (null, "خطا در جستجو");
+                return new GetCustomerByPhoneResult { ErrorMessage = "مشتری با این شماره یافت نشد" };
+            return new GetCustomerByPhoneResult { ErrorMessage = "خطا در جستجو" };
         }
         catch (HttpRequestException ex)
         {
-            return (null, $"خطای شبکه: {ex.Message}");
+            return new GetCustomerByPhoneResult { ErrorMessage = $"خطای شبکه: {ex.Message}" };
         }
         catch (TaskCanceledException)
         {
-            return (null, "زمان درخواست به پایان رسید");
+            return new GetCustomerByPhoneResult { ErrorMessage = "زمان درخواست به پایان رسید" };
         }
         catch (Exception ex)
         {
-            return (null, $"خطا: {ex.Message}");
+            return new GetCustomerByPhoneResult { ErrorMessage = $"خطا: {ex.Message}" };
         }
     }
 
-    public async Task<(bool success, string message)> UpdateCustomerAsync(UpdateCustomerCommand command)
+    public async Task<UpdateCustomerResult> UpdateCustomerAsync(UpdateCustomerCommand command)
     {
         var response = await httpClient.PutAsJsonAsync($"api/customer/{command.Id}", command);
         if (response.IsSuccessStatusCode)
         {
             var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
-            return (true, ok?.Message ?? "اطلاعات مشتری به‌روزرسانی شد");
+            return new UpdateCustomerResult { Success = true, Message = ok?.Message ?? "اطلاعات مشتری به‌روزرسانی شد" };
         }
         var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (false, error?.Message ?? "خطا در به‌روزرسانی مشتری");
+        return new UpdateCustomerResult { Success = false, Message = error?.Message ?? "خطا در به‌روزرسانی مشتری" };
     }
 
     public async Task<SendSmsResult?> SendSmsAsync(SendSmsCommand command)
@@ -176,28 +176,28 @@ public class ApiClientService
         return await httpClient.GetFromJsonAsync<List<OrderStatus>>("api/order/statuses");
     }
 
-    public async Task<(bool success, string message)> UpsertOrderStatusAsync(UpsertOrderStatusCommand command)
+    public async Task<UpsertOrderStatusResult> UpsertOrderStatusAsync(UpsertOrderStatusCommand command)
     {
         var response = await httpClient.PostAsJsonAsync("api/order/statuses", command);
         if (response.IsSuccessStatusCode)
         {
             var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
-            return (true, ok?.Message ?? "ذخیره شد");
+            return new UpsertOrderStatusResult { Success = true, Message = ok?.Message ?? "ذخیره شد" };
         }
         var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (false, error?.Message ?? "خطا در ذخیره‌سازی");
+        return new UpsertOrderStatusResult { Success = false, Message = error?.Message ?? "خطا در ذخیره‌سازی" };
     }
 
-    public async Task<(bool success, string message)> DeleteOrderStatusAsync(int id)
+    public async Task<DeleteOrderStatusResult> DeleteOrderStatusAsync(int id)
     {
         var response = await httpClient.DeleteAsync($"api/order/statuses/{id}");
         if (response.IsSuccessStatusCode)
         {
             var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
-            return (true, ok?.Message ?? "حذف شد");
+            return new DeleteOrderStatusResult { Success = true, Message = ok?.Message ?? "حذف شد" };
         }
         var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (false, error?.Message ?? "خطا در حذف");
+        return new DeleteOrderStatusResult { Success = false, Message = error?.Message ?? "خطا در حذف" };
     }
 
     // ── API Keys ─────────────────────────────────────────────────────────────
@@ -212,16 +212,16 @@ public class ApiClientService
         return await response.Content.ReadFromJsonAsync<CreateApiKeyResult>();
     }
 
-    public async Task<(bool success, string message)> DeleteApiKeyAsync(int id)
+    public async Task<DeleteApiKeyResult> DeleteApiKeyAsync(int id)
     {
         var response = await httpClient.DeleteAsync($"api/apikey/{id}");
         if (response.IsSuccessStatusCode)
         {
             var ok = await response.Content.ReadFromJsonAsync<MessageResponse>();
-            return (true, ok?.Message ?? "حذف شد");
+            return new DeleteApiKeyResult { Success = true, Message = ok?.Message ?? "حذف شد" };
         }
         var error = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (false, error?.Message ?? "خطا در حذف");
+        return new DeleteApiKeyResult { Success = false, Message = error?.Message ?? "خطا در حذف" };
     }
 
     // ── Bot Conversations ──────────────────────────────────────────────────
@@ -271,25 +271,37 @@ public class ApiClientService
         return await httpClient.GetFromJsonAsync<List<UserDto>>("api/user");
     }
 
-    public async Task<(bool success, string message)> CreateUserAsync(CreateUserCommand command)
+    public async Task<CreateUserResult> CreateUserAsync(CreateUserCommand command)
     {
         var response = await httpClient.PostAsJsonAsync("api/user", command);
         var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر ایجاد شد" : "خطا در ایجاد کاربر"));
+        return new CreateUserResult
+        {
+            Success = response.IsSuccessStatusCode,
+            Message = result?.Message ?? (response.IsSuccessStatusCode ? "کاربر ایجاد شد" : "خطا در ایجاد کاربر")
+        };
     }
 
-    public async Task<(bool success, string message)> UpdateUserAsync(string userId, UpdateUserCommand command)
+    public async Task<UpdateUserResult> UpdateUserAsync(string userId, UpdateUserCommand command)
     {
         var response = await httpClient.PutAsJsonAsync($"api/user/{userId}", command);
         var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر به‌روزرسانی شد" : "خطا در به‌روزرسانی کاربر"));
+        return new UpdateUserResult
+        {
+            Success = response.IsSuccessStatusCode,
+            Message = result?.Message ?? (response.IsSuccessStatusCode ? "کاربر به‌روزرسانی شد" : "خطا در به‌روزرسانی کاربر")
+        };
     }
 
-    public async Task<(bool success, string message)> DeleteUserAsync(string userId)
+    public async Task<DeleteUserResult> DeleteUserAsync(string userId)
     {
         var response = await httpClient.DeleteAsync($"api/user/{userId}");
         var result = await response.Content.ReadFromJsonAsync<MessageResponse>();
-        return (response.IsSuccessStatusCode, result?.Message ?? (response.IsSuccessStatusCode ? "کاربر حذف شد" : "خطا در حذف کاربر"));
+        return new DeleteUserResult
+        {
+            Success = response.IsSuccessStatusCode,
+            Message = result?.Message ?? (response.IsSuccessStatusCode ? "کاربر حذف شد" : "خطا در حذف کاربر")
+        };
     }
 
     // ── Order Statistics ────────────────────────────────────────────────

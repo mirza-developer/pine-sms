@@ -104,16 +104,16 @@ public partial class ApiKeyManage
         isSaving = true;
         try
         {
-            var (success, message) = await ApiClient.DeleteApiKeyAsync(deleteTarget.Id);
-            if (success)
+            var result = await ApiClient.DeleteApiKeyAsync(deleteTarget.Id);
+            if (result.Success)
             {
-                NotificationService.ShowSuccess(message);
+                NotificationService.ShowSuccess(result.Message);
                 deleteTarget = null;
                 await LoadKeys();
             }
             else
             {
-                NotificationService.ShowError(message);
+                NotificationService.ShowError(result.Message);
             }
         }
         catch

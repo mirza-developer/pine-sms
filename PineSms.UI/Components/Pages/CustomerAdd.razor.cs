@@ -43,27 +43,27 @@ public partial class CustomerAdd
 
         try
         {
-            var (customer, errorMessage) = await ApiClient.GetCustomerByPhoneAsync(command.PhoneNumber);
+            var result = await ApiClient.GetCustomerByPhoneAsync(command.PhoneNumber);
 
-            if (customer != null)
+            if (result.Customer != null)
             {
-                foundCustomerId = customer.Id;
+                foundCustomerId = result.Customer.Id;
                 searchFound = true;
                 searchMessage = "مشتری یافت شد — اطلاعات بارگذاری شد";
 
                 // Populate form with existing data
-                command.Name = customer.Name;
-                command.Gender = customer.Gender;
-                command.BirthYear = customer.BirthYear;
-                command.IsTester = customer.IsTester;
-                command.BirthDate = customer.BirthDate.HasValue
-                    ? PersianDateHelper.ToPersianDate(customer.BirthDate.Value)
+                command.Name = result.Customer.Name;
+                command.Gender = result.Customer.Gender;
+                command.BirthYear = result.Customer.BirthYear;
+                command.IsTester = result.Customer.IsTester;
+                command.BirthDate = result.Customer.BirthDate.HasValue
+                    ? PersianDateHelper.ToPersianDate(result.Customer.BirthDate.Value)
                     : null;
             }
             else
             {
                 searchFound = false;
-                searchMessage = errorMessage ?? "مشتری با این شماره یافت نشد";
+                searchMessage = result.ErrorMessage ?? "مشتری با این شماره یافت نشد";
             }
         }
         catch
@@ -93,23 +93,23 @@ public partial class CustomerAdd
                     BirthDate = command.BirthDate,
                     IsTester = command.IsTester
                 };
-                var (success, message) = await ApiClient.UpdateCustomerAsync(updateCmd);
-                if (success)
-                    NotificationService.ShowSuccess(message);
+                var result = await ApiClient.UpdateCustomerAsync(updateCmd);
+                if (result.Success)
+                    NotificationService.ShowSuccess(result.Message);
                 else
-                    NotificationService.ShowError(message);
+                    NotificationService.ShowError(result.Message);
             }
             else
             {
-                var (success, message) = await ApiClient.InsertCustomerAsync(command);
-                if (success)
+                var result = await ApiClient.InsertCustomerAsync(command);
+                if (result.Success)
                 {
-                    NotificationService.ShowSuccess(message);
+                    NotificationService.ShowSuccess(result.Message);
                     Reset();
                 }
                 else
                 {
-                    NotificationService.ShowError(message);
+                    NotificationService.ShowError(result.Message);
                 }
             }
         }
