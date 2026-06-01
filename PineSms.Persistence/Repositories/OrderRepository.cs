@@ -110,17 +110,17 @@ public class OrderRepository : IOrderService
         return await dbContext.OrderStatus.OrderBy(s => s.Code).ToListAsync();
     }
 
-    public async Task<(bool success, string message)> UpsertOrderStatus(UpsertOrderStatusCommand command)
+    public async Task<UpsertOrderStatusResult> UpsertOrderStatus(UpsertOrderStatusCommand command)
     {
         if (command.Id.HasValue)
         {
             var existing = await dbContext.OrderStatus.FindAsync(command.Id.Value);
             if (existing == null)
-                return (false, "وضعیت سفارش یافت نشد");
+                return new UpsertOrderStatusResult { Success = false, Message = "وضعیت سفارش یافت نشد" };
 
             bool codeConflict = await dbContext.OrderStatus.AnyAsync(s => s.Code == command.Code && s.Id != command.Id.Value);
             if (codeConflict)
-                return (false, "این کد قبلاً استفاده شده است");
+                return new UpsertOrderStatusResult { Success = false, Message = "این کد قبلاً استفاده شده است" };
 
             existing.Code = command.Code;
             existing.Title = command.Title;
@@ -130,7 +130,7 @@ public class OrderRepository : IOrderService
         {
             bool codeConflict = await dbContext.OrderStatus.AnyAsync(s => s.Code == command.Code);
             if (codeConflict)
-                return (false, "این کد قبلاً استفاده شده است");
+                return new UpsertOrderStatusResult { Success = false, Message = "این کد قبلاً استفاده شده است" };
 
             dbContext.OrderStatus.Add(new OrderStatus
             {
@@ -141,30 +141,30 @@ public class OrderRepository : IOrderService
         }
 
         await dbContext.SaveChangesAsync();
-        return (true, command.Id.HasValue ? "وضعیت سفارش به‌روزرسانی شد" : "وضعیت سفارش ثبت شد");
+        return new UpsertOrderStatusResult { Success = true, Message = command.Id.HasValue ? "وضعیت سفارش به‌روزرسانی شد" : "وضعیت سفارش ثبت شد" };
     }
 
-    public async Task<(bool success, string message)> DeleteOrderStatus(int id)
+    public async Task<DeleteOrderStatusResult> DeleteOrderStatus(int id)
     {
         var status = await dbContext.OrderStatus.FindAsync(id);
 
         if (status is null)
         {
-            return (false, "وضعیت سفارش یافت نشد");
+            return new DeleteOrderStatusResult { Success = false, Message = "وضعیت سفارش یافت نشد" };
         }
 
         bool hasOrders = await dbContext.CustomerOrder.AnyAsync(o => o.OrderStatusId == id);
 
         if (hasOrders)
         {
-            return (false, "این وضعیت در سفارشات استفاده شده و قابل حذف نیست");
+            return new DeleteOrderStatusResult { Success = false, Message = "این وضعیت در سفارشات استفاده شده و قابل حذف نیست" };
         }
 
         dbContext.OrderStatus.Remove(status);
-        
+
         await dbContext.SaveChangesAsync();
-        
-        return (true, "وضعیت سفارش حذف شد");
+
+        return new DeleteOrderStatusResult { Success = true, Message = "وضعیت سفارش حذف شد" };
     }
 
     public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)    {

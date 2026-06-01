@@ -7,6 +7,6 @@ public interface IApiKeyService
 {
     Task<CreateApiKeyResult> CreateApiKey(CreateApiKeyCommand command);
     Task<List<ApiKey>> GetAllApiKeys();
-    Task<(bool success, string message)> DeleteApiKey(int id);
+    Task<DeleteApiKeyResult> DeleteApiKey(int id);
     Task<bool> ValidateApiKey(string key);
 }
