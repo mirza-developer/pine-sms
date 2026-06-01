@@ -60,8 +60,8 @@ public class ChatAgentService : IChatAgentService
     /// </summary>
     /// <param name="sessionJson">Serialized session JSON from a previous turn, or <c>null</c> to start a new session.</param>
     /// <param name="userText">The user's message text.</param>
-    /// <returns>The agent's response text and the updated serialized session JSON.</returns>
-    public async Task<(string ResponseText, string SerializedSession)> SendWithSessionAsync(
+    /// <returns>The agent's response including the response text and the updated serialized session JSON.</returns>
+    public async Task<ChatAgentResponse> SendWithSessionAsync(
         string? sessionJson, string userText)
     {
         EnsureInitialized();
@@ -83,7 +83,7 @@ public class ChatAgentService : IChatAgentService
         var serializedElement = await agent!.SerializeSessionAsync(session);
         var serializedSession = serializedElement.GetRawText();
 
-        return (responseText, serializedSession);
+        return new ChatAgentResponse { ResponseText = responseText, SerializedSession = serializedSession };
     }
 
     /// <summary>Creates a fresh blank session and returns its serialized JSON.</summary>

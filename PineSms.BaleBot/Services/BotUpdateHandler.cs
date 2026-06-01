@@ -137,11 +137,11 @@ public class BotUpdateHandler : IBotUpdateHandler
         }
 
         var existingSession = sessionStore.GetSession(chatId);
-        var (rawResponse, updatedSession) = await agentService.SendWithSessionAsync(existingSession, text);
-        sessionStore.SetSession(chatId, updatedSession);
+        var response = await agentService.SendWithSessionAsync(existingSession, text);
+        sessionStore.SetSession(chatId, response.SerializedSession);
 
         var orderCodes = new List<string>();
-        var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(rawResponse, orderCodes);
+        var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(response.ResponseText, orderCodes);
         visibleOrderCodes = ResponseBlockTools.StripFeedbackBlocks(visibleOrderCodes, out var feedbackJson);
 
         // If the AI signalled one or more order codes, resolve them from the DB

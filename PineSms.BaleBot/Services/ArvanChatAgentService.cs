@@ -55,7 +55,7 @@ public class ArvanChatAgentService : IChatAgentService
     }
 
     /// <inheritdoc/>
-    public async Task<(string ResponseText, string SerializedSession)> SendWithSessionAsync(
+    public async Task<ChatAgentResponse> SendWithSessionAsync(
         string? sessionJson, string userText)
     {
         EnsureInitialized();
@@ -98,7 +98,7 @@ public class ArvanChatAgentService : IChatAgentService
 
         var serializedSession = JsonSerializer.Serialize(history, ArvanJsonOptions.Default);
 
-        return (responseText, serializedSession);
+        return new ChatAgentResponse { ResponseText = responseText, SerializedSession = serializedSession };
     }
 
     /// <inheritdoc/>
