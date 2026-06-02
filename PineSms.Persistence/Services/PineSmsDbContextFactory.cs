@@ -16,14 +16,6 @@ public class PineSmsDbContextFactory : IDesignTimeDbContextFactory<PineSmsDbCont
             .UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=PineSms_Design;Trusted_Connection=True;")
             .Options;
 
-        PineSmsDbContext.SkipInitialization = true;
-        try
-        {
-            return new PineSmsDbContext(options);
-        }
-        finally
-        {
-            PineSmsDbContext.SkipInitialization = false;
-        }
+        return new PineSmsDbContext(options);
     }
 }

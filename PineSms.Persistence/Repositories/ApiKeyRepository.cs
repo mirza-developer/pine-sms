@@ -39,7 +39,7 @@ public class ApiKeyRepository : IApiKeyService
 
     public async Task<List<ApiKey>> GetAllApiKeys()
     {
-        return await dbContext.ApiKey.OrderByDescending(k => k.CreatedAt).ToListAsync();
+        return await dbContext.ApiKey.AsNoTracking().OrderByDescending(k => k.CreatedAt).ToListAsync();
     }
 
     public async Task<DeleteApiKeyResult> DeleteApiKey(int id)
@@ -50,6 +50,7 @@ public class ApiKeyRepository : IApiKeyService
 
         dbContext.ApiKey.Remove(apiKey);
         await dbContext.SaveChangesAsync();
+
         return new DeleteApiKeyResult { Success = true, Message = "کلید API حذف شد" };
     }
 

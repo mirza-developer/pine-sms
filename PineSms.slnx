@@ -18,7 +18,7 @@
     <Project Path="PineSms.Backup/PineSms.Backup.csproj" Id="29e1afc2-de7a-4e00-a2ad-9333bf382644" />
     <Project Path="PineSms.BaleBot/PineSms.BaleBot.csproj" />
   </Folder>
-  <Folder Name="/src/Presentation/UI/">
+  <Folder Name="/src/Presentation/Web/">
     <Project Path="PineSms.OrderTrack/PineSms.OrderTrack.csproj" />
     <Project Path="PineSms.UI/PineSms.UI.csproj" />
   </Folder>
