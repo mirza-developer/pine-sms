@@ -852,6 +852,26 @@ html, body {
     font-size: 0.84rem;
 }
 
+.ot-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0.25rem;
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.ot-copy-btn:hover {
+    color: #4a8019;
+    border-color: #4a8019;
+    background: #e8f5dc;
+}
+
 .nk-track-result-value {
     font-weight: 700;
     color: #1f2328;
