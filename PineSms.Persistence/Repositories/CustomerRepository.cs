@@ -15,14 +15,14 @@ public class CustomerRepository : ICustomerService
         this.dbContext = dbContext;
     }
 
-    public async Task<(bool success, string message)> InsertCustomer(InsertCustomerCommand command, string userId)
+    public async Task<InsertCustomerResult> InsertCustomer(InsertCustomerCommand command, string userId)
     {
         if (!IsValidPhoneNumber(command.PhoneNumber))
-            return (false, "شماره موبایل معتبر نیست");
+            return new InsertCustomerResult { Success = false, Message = "شماره موبایل معتبر نیست" };
 
         bool exists = await dbContext.Customer.AnyAsync(c => c.PhoneNumber == command.PhoneNumber);
         if (exists)
-            return (false, "این شماره موبایل قبلاً ثبت شده است");
+            return new InsertCustomerResult { Success = false, Message = "این شماره موبایل قبلاً ثبت شده است" };
 
         DateTime? birthDate = null;
         if (!string.IsNullOrEmpty(command.BirthDate))
@@ -48,7 +48,7 @@ public class CustomerRepository : ICustomerService
 
         dbContext.Customer.Add(customer);
         await dbContext.SaveChangesAsync();
-        return (true, "مشتری با موفقیت ثبت شد");
+        return new InsertCustomerResult { Success = true, Message = "مشتری با موفقیت ثبت شد" };
     }
 
     public async Task<ImportCustomersResult> ImportCustomers(ImportCustomersCommand command, string userId)
@@ -139,10 +139,15 @@ public class CustomerRepository : ICustomerService
             .ToListAsync();
     }
 
-    public async Task<Customer?> GetCustomerByPhoneNumber(string phoneNumber)
+    public async Task<GetCustomerByPhoneResult> GetCustomerByPhoneNumber(string phoneNumber)
     {
-        return await dbContext.Customer
+        var customer = await dbContext.Customer
             .FirstOrDefaultAsync(c => c.PhoneNumber == phoneNumber);
+
+        if (customer == null)
+            return new GetCustomerByPhoneResult { Customer = null, ErrorMessage = "مشتری با این شماره یافت نشد" };
+
+        return new GetCustomerByPhoneResult { Customer = customer, ErrorMessage = null };
     }
 
     public async Task<UpdateCustomerResult> UpdateCustomer(UpdateCustomerCommand command)

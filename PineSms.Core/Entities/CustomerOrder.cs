@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PineSms.Core.Entities;
 
 public class CustomerOrder : IBaseEntity
@@ -17,6 +19,7 @@ public class CustomerOrder : IBaseEntity
     [Required]
     public int CustomerId { get; set; }
 
+    [JsonIgnore]
     public Customer Customer { get; set; } = null!;
 
     [Required]

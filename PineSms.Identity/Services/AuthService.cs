@@ -109,10 +109,10 @@ public class AuthService : IAuthService
             .ToListAsync();
     }
 
-    public async Task<(bool success, string message)> CreateUserAsync(CreateUserCommand command)
+    public async Task<CreateUserResult> CreateUserAsync(CreateUserCommand command)
     {
         if (await context.Users.AnyAsync(u => u.UserName == command.UserName))
-            return (false, "این نام کاربری قبلاً ثبت شده است");
+            return new CreateUserResult { Success = false, Message = "این نام کاربری قبلاً ثبت شده است" };
 
         var user = new ApplicationUser
         {
@@ -132,17 +132,17 @@ public class AuthService : IAuthService
 
         context.Users.Add(user);
         await context.SaveChangesAsync();
-        return (true, "کاربر با موفقیت ایجاد شد");
+        return new CreateUserResult { Success = true, Message = "کاربر با موفقیت ایجاد شد" };
     }
 
-    public async Task<(bool success, string message)> UpdateUserAsync(UpdateUserCommand command)
+    public async Task<UpdateUserResult> UpdateUserAsync(UpdateUserCommand command)
     {
         var user = await context.Users.FindAsync(command.Id);
         if (user is null)
-            return (false, "کاربر یافت نشد");
+            return new UpdateUserResult { Success = false, Message = "کاربر یافت نشد" };
 
         if (!string.IsNullOrEmpty(command.NewPassword) && command.NewPassword.Length < 6)
-            return (false, "رمز عبور باید حداقل ۶ کاراکتر باشد");
+            return new UpdateUserResult { Success = false, Message = "رمز عبور باید حداقل ۶ کاراکتر باشد" };
 
         user.PersianName = command.PersianName;
 
@@ -150,27 +150,27 @@ public class AuthService : IAuthService
             user.PasswordHash = CryptographyTools.GetHashedStringSha256StringBuilder(command.NewPassword);
 
         await context.SaveChangesAsync();
-        return (true, "اطلاعات کاربر به‌روزرسانی شد");
+        return new UpdateUserResult { Success = true, Message = "اطلاعات کاربر به‌روزرسانی شد" };
     }
 
-    public async Task<(bool success, string message)> DeleteUserAsync(string userId)
+    public async Task<DeleteUserResult> DeleteUserAsync(string userId)
     {
         var user = await context.Users.FindAsync(userId);
         if (user is null)
-            return (false, "کاربر یافت نشد");
+            return new DeleteUserResult { Success = false, Message = "کاربر یافت نشد" };
 
         var isAdmin = await context.UserRoles
             .Join(context.Roles!, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, r.Name })
             .AnyAsync(x => x.UserId == userId && x.Name == "Admin");
 
         if (isAdmin)
-            return (false, "امکان حذف کاربر مدیر وجود ندارد");
+            return new DeleteUserResult { Success = false, Message = "امکان حذف کاربر مدیر وجود ندارد" };
 
         var userRoles = context.UserRoles.Where(ur => ur.UserId == userId);
         context.UserRoles.RemoveRange(userRoles);
         context.Users.Remove(user);
         await context.SaveChangesAsync();
-        return (true, "کاربر با موفقیت حذف شد");
+        return new DeleteUserResult { Success = true, Message = "کاربر با موفقیت حذف شد" };
     }
 
     private async Task<ClaimsIdentity> GetClaimsIdentityAsync(ApplicationUser user)

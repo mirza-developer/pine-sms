@@ -16,8 +16,8 @@ public interface IChatAgentService
     /// </summary>
     /// <param name="sessionJson">Serialized session JSON from a previous turn, or <c>null</c> to start a new session.</param>
     /// <param name="userText">The user's message text.</param>
-    /// <returns>The agent's response text and the updated serialized session JSON.</returns>
-    Task<(string ResponseText, string SerializedSession)> SendWithSessionAsync(
+    /// <returns>The agent's response including the response text and the updated serialized session JSON.</returns>
+    Task<ChatAgentResponse> SendWithSessionAsync(
         string? sessionJson, string userText);
 
     /// <summary>Creates a fresh blank session and returns its serialized JSON.</summary>

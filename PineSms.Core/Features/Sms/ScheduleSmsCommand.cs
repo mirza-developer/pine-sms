@@ -12,31 +12,3 @@ public class ScheduleSmsCommand
     /// <summary>UTC time to send the first part. Null means send the first part immediately.</summary>
     public DateTime? FirstSendAt { get; set; }
 }
-
-public class ScheduleSmsResult
-{
-    public bool Success { get; set; }
-    public int JobId { get; set; }
-    public string Message { get; set; } = string.Empty;
-}
-
-public class SmsSendJobDto
-{
-    public int Id { get; set; }
-    public string FromNumber { get; set; } = string.Empty;
-    public string MessageText { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public List<SmsSendJobPartDto> Parts { get; set; } = new();
-}
-
-public class SmsSendJobPartDto
-{
-    public int Id { get; set; }
-    public int PartNumber { get; set; }
-    public DateTime ScheduledAt { get; set; }
-    public int RecipientCount { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public int SentCount { get; set; }
-    public DateTime? ExecutedAt { get; set; }
-    public string? ResultJson { get; set; }
-}

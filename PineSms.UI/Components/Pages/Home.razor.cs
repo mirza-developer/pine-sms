@@ -50,9 +50,9 @@ public partial class Home
 
         try
         {
-            var (startDate, endDate, groupBy) = GetDateRange();
-            
-            var statistics = await ApiClient.GetOrderStatisticsAsync(startDate, endDate, groupBy);
+            var dateRange = GetDateRange();
+
+            var statistics = await ApiClient.GetOrderStatisticsAsync(dateRange.StartDate, dateRange.EndDate, dateRange.GroupBy);
 
             if (statistics is null || statistics.DataPoints is null)
             {
@@ -85,7 +85,7 @@ public partial class Home
         }
     }
 
-    private (DateTime startDate, DateTime endDate, string groupBy) GetDateRange()
+    private DateRangeResult GetDateRange()
     {
         var now = DateTime.Now;
         var persianNow = DateTime.Now;
@@ -98,14 +98,14 @@ public partial class Home
             var firstDayOfMonth = persianCalendar.ToDateTime(persianYear, persianMonth, 1, 0, 0, 0, 0);
             var daysInMonth = persianCalendar.GetDaysInMonth(persianYear, persianMonth);
             var lastDayOfMonth = persianCalendar.ToDateTime(persianYear, persianMonth, daysInMonth, 23, 59, 59, 0);
-            return (firstDayOfMonth, lastDayOfMonth, "week");
+            return new DateRangeResult { StartDate = firstDayOfMonth, EndDate = lastDayOfMonth, GroupBy = "week" };
         }
         else if (selectedRange == "monthly")
         {
             // Monthly in current Persian year
             var firstDayOfYear = persianCalendar.ToDateTime(persianYear, 1, 1, 0, 0, 0, 0);
             var lastDayOfYear = persianCalendar.ToDateTime(persianYear, 12, persianCalendar.GetDaysInMonth(persianYear, 12), 23, 59, 59, 0);
-            return (firstDayOfYear, lastDayOfYear, "month");
+            return new DateRangeResult { StartDate = firstDayOfYear, EndDate = lastDayOfYear, GroupBy = "month" };
         }
         else // yearly
         {
@@ -113,7 +113,7 @@ public partial class Home
             var startYear = persianYear - 2;
             var firstDay = persianCalendar.ToDateTime(startYear, 1, 1, 0, 0, 0, 0);
             var lastDay = persianCalendar.ToDateTime(persianYear, 12, persianCalendar.GetDaysInMonth(persianYear, 12), 23, 59, 59, 0);
-            return (firstDay, lastDay, "year");
+            return new DateRangeResult { StartDate = firstDay, EndDate = lastDay, GroupBy = "year" };
         }
     }
 

@@ -7,12 +7,3 @@ public class ImportCustomersCommand
     /// <summary>Persian date string (yyyy/MM/dd). If null/empty, current UTC time is used.</summary>
     public string? SaveDate { get; set; }
 }
-
-public class ImportCustomersResult
-{
-    public bool Success { get; set; }
-    public int InsertedCount { get; set; }
-    public List<string> InvalidNumbers { get; set; } = new();
-    public List<string> DuplicateNumbers { get; set; } = new();
-    public string Message { get; set; } = string.Empty;
-}

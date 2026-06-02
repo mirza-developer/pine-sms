@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 
-namespace PineSms.UI.Services;
+namespace PineSms.Shared.Tools;
 
 /// <summary>
 /// Builds a minimal but valid .xlsx file from a list of phone numbers

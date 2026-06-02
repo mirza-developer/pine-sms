@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PineSms.Core.Contracts;
+using ZiggyCreatures.Caching.Fusion;
 using PineSms.Core.Entities;
 using PineSms.Core.Features.Order;
 using PineSms.Persistence.Services;
@@ -12,11 +13,13 @@ public class OrderRepository : IOrderService
 {
     private readonly PineSmsDbContext dbContext;
     private readonly IBaleMessengerService baleMessengerService;
+    private readonly IFusionCache _cache;
 
-    public OrderRepository(PineSmsDbContext dbContext, IBaleMessengerService baleMessengerService)
+    public OrderRepository(PineSmsDbContext dbContext, IBaleMessengerService baleMessengerService, IFusionCache cache)
     {
         this.dbContext = dbContext;
         this.baleMessengerService = baleMessengerService;
+        _cache = cache;
     }
 
     public async Task<NotifyOrderResult> NotifyOrder(NotifyOrderCommand command)
@@ -32,7 +35,7 @@ public class OrderRepository : IOrderService
             return result;
         }
 
-        var customer = await dbContext.Customer.FirstOrDefaultAsync(c => c.PhoneNumber == phone);
+        var customer = await dbContext.Customer.AsNoTracking().FirstOrDefaultAsync(c => c.PhoneNumber == phone);
        
         if (customer is null)
         {
@@ -51,7 +54,19 @@ public class OrderRepository : IOrderService
         }
 
         // 2. Ensure order status exists
-        var orderStatus = await dbContext.OrderStatus.FirstOrDefaultAsync(s => s.Code == command.OrderStatusCode);
+        var orderStatusCacheKey = $"order_status_{command.OrderStatusCode}";
+        var orderStatus = await _cache.GetOrSetAsync<OrderStatus?>(orderStatusCacheKey,
+            async (ctx, ct) =>
+            {
+                var status = await dbContext.OrderStatus.AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Code == command.OrderStatusCode, ct);
+
+                // Do not cache null — invalid codes should re-check the DB every time
+                if (status is null)
+                    ctx.Options.Duration = TimeSpan.Zero;
+
+                return status;
+            });
       
         if (orderStatus is null)
         {
@@ -64,11 +79,16 @@ public class OrderRepository : IOrderService
 
         if (command.OrderCode.StartsWith("wc-"))
         {
-            command.OrderCode = command.OrderCode.Replace("wc-","");
+            command.OrderCode = command.OrderCode.Replace("wc-", "");
         }
- 
-        var order = await dbContext.CustomerOrder.FirstOrDefaultAsync(o => o.OrderCode == command.OrderCode);
-       
+
+        var orderCacheKey = $"customer_order_{command.OrderCode}";
+        var trackCacheKey = $"track_order_{command.OrderCode}";
+
+        CustomerOrder? order = await _cache.GetOrDefaultAsync<CustomerOrder?>(orderCacheKey);
+        if (order is null)
+            order = await dbContext.CustomerOrder.AsNoTracking().FirstOrDefaultAsync(o => o.OrderCode == command.OrderCode);
+
         if (order is null)
         {
             order = new CustomerOrder
@@ -78,21 +98,28 @@ public class OrderRepository : IOrderService
                 OrderStatusId = orderStatus.Id,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
-                
             };
-            
+
             dbContext.CustomerOrder.Add(order);
-            
+
             result.IsNewOrder = true;
         }
         else
         {
+            dbContext.CustomerOrder.Attach(order);
             order.OrderStatusId = orderStatus.Id;
-
             order.UpdatedAt = DateTime.Now;
         }
 
         await dbContext.SaveChangesAsync();
+
+        // Sync cache after save — evict stale track projection, refresh entity cache
+        await _cache.RemoveAsync(trackCacheKey);
+        await _cache.SetAsync(orderCacheKey, order, new FusionCacheEntryOptions
+        {
+            Duration = TimeSpan.FromDays(1),
+            DistributedCacheDuration = TimeSpan.FromDays(14)
+        });
 
         // 4. Notify the customer via Bale messenger
         //var notificationMessage = $"سفارش شما با کد {command.OrderCode} به وضعیت «{orderStatus.Title}» تغییر کرد.";
@@ -107,20 +134,20 @@ public class OrderRepository : IOrderService
 
     public async Task<List<OrderStatus>> GetAllOrderStatuses()
     {
-        return await dbContext.OrderStatus.OrderBy(s => s.Code).ToListAsync();
+        return await dbContext.OrderStatus.AsNoTracking().OrderBy(s => s.Code).ToListAsync();
     }
 
-    public async Task<(bool success, string message)> UpsertOrderStatus(UpsertOrderStatusCommand command)
+    public async Task<UpsertOrderStatusResult> UpsertOrderStatus(UpsertOrderStatusCommand command)
     {
         if (command.Id.HasValue)
         {
             var existing = await dbContext.OrderStatus.FindAsync(command.Id.Value);
             if (existing == null)
-                return (false, "وضعیت سفارش یافت نشد");
+                return new UpsertOrderStatusResult { Success = false, Message = "وضعیت سفارش یافت نشد" };
 
             bool codeConflict = await dbContext.OrderStatus.AnyAsync(s => s.Code == command.Code && s.Id != command.Id.Value);
             if (codeConflict)
-                return (false, "این کد قبلاً استفاده شده است");
+                return new UpsertOrderStatusResult { Success = false, Message = "این کد قبلاً استفاده شده است" };
 
             existing.Code = command.Code;
             existing.Title = command.Title;
@@ -130,7 +157,7 @@ public class OrderRepository : IOrderService
         {
             bool codeConflict = await dbContext.OrderStatus.AnyAsync(s => s.Code == command.Code);
             if (codeConflict)
-                return (false, "این کد قبلاً استفاده شده است");
+                return new UpsertOrderStatusResult { Success = false, Message = "این کد قبلاً استفاده شده است" };
 
             dbContext.OrderStatus.Add(new OrderStatus
             {
@@ -141,33 +168,36 @@ public class OrderRepository : IOrderService
         }
 
         await dbContext.SaveChangesAsync();
-        return (true, command.Id.HasValue ? "وضعیت سفارش به‌روزرسانی شد" : "وضعیت سفارش ثبت شد");
+        await _cache.RemoveAsync($"order_status_{command.Code}");
+        return new UpsertOrderStatusResult { Success = true, Message = command.Id.HasValue ? "وضعیت سفارش به‌روزرسانی شد" : "وضعیت سفارش ثبت شد" };
     }
 
-    public async Task<(bool success, string message)> DeleteOrderStatus(int id)
+    public async Task<DeleteOrderStatusResult> DeleteOrderStatus(int id)
     {
         var status = await dbContext.OrderStatus.FindAsync(id);
 
         if (status is null)
         {
-            return (false, "وضعیت سفارش یافت نشد");
+            return new DeleteOrderStatusResult { Success = false, Message = "وضعیت سفارش یافت نشد" };
         }
 
         bool hasOrders = await dbContext.CustomerOrder.AnyAsync(o => o.OrderStatusId == id);
 
         if (hasOrders)
         {
-            return (false, "این وضعیت در سفارشات استفاده شده و قابل حذف نیست");
+            return new DeleteOrderStatusResult { Success = false, Message = "این وضعیت در سفارشات استفاده شده و قابل حذف نیست" };
         }
 
         dbContext.OrderStatus.Remove(status);
-        
+
         await dbContext.SaveChangesAsync();
-        
-        return (true, "وضعیت سفارش حذف شد");
+        await _cache.RemoveAsync($"order_status_{status.Code}");
+
+        return new DeleteOrderStatusResult { Success = true, Message = "وضعیت سفارش حذف شد" };
     }
 
-    public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)    {
+    public async Task<BulkUpdateTrackingResult> BulkUpdateTracking(BulkUpdateTrackingCommand command)    
+    {
         var result = new BulkUpdateTrackingResult();
 
         foreach (var entry in command.Entries)
@@ -187,7 +217,16 @@ public class OrderRepository : IOrderService
         }
 
         if (result.UpdatedCount > 0)
+        {
             await dbContext.SaveChangesAsync();
+
+            // Evict cache for every updated order so reads get fresh data
+            foreach (var entry in command.Entries.Where(e => !result.NotFoundCodes.Contains(e.OrderCode)))
+            {
+                await _cache.RemoveAsync($"customer_order_{entry.OrderCode}");
+                await _cache.RemoveAsync($"track_order_{entry.OrderCode}");
+            }
+        }
 
         result.Success = true;
         result.Message = $"{result.UpdatedCount} سفارش به‌روزرسانی شد" +
@@ -197,30 +236,35 @@ public class OrderRepository : IOrderService
 
     public async Task<TrackOrderResult> GetOrderByCode(string orderCode)
     {
+        var trackCacheKey = $"track_order_{orderCode}";
+
+        var cached = await _cache.GetOrDefaultAsync<TrackOrderResult?>(trackCacheKey);
+        if (cached is not null)
+            return cached;
+
         CustomerOrder? order;
 
         order = await dbContext.CustomerOrder
+                               .AsNoTracking()
                                .Include(o => o.OrderStatus)
                                .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
 
         if (order is null)
         {
             order = await dbContext.CustomerOrder
+                               .AsNoTracking()
                                .Include(o => o.OrderStatus)
                                .Include(o => o.Customer)
-                               .OrderByDescending(o => o.CreatedAt)  
+                               .OrderByDescending(o => o.CreatedAt)
                                .FirstOrDefaultAsync(o => o.Customer.PhoneNumber == orderCode.ToNormalizedPhoneNumber());
         }
 
         if (order is null)
         {
-            return new()
-            {
-                Found = false
-            };
+            return new() { Found = false };
         }
 
-        return new()
+        var result = new TrackOrderResult
         {
             Found = true,
             OrderCode = order.OrderCode,
@@ -228,6 +272,14 @@ public class OrderRepository : IOrderService
             PostalTrackingCode = order.PostalTrackingCode,
             UpdatedAt = order.UpdatedAt
         };
+
+        await _cache.SetAsync(trackCacheKey, result, new FusionCacheEntryOptions
+        {
+            Duration = TimeSpan.FromDays(1),
+            DistributedCacheDuration = TimeSpan.FromDays(14)
+        });
+
+        return result;
     }
 
     public async Task<OrderStatisticsResult> GetOrderStatistics(GetOrderStatisticsQuery query)

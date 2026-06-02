@@ -37,8 +37,8 @@ public class ApiKeyController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var (success, message) = await apiKeyService.DeleteApiKey(id);
-        if (!success) return BadRequest(new { message });
-        return Ok(new { message });
+        var result = await apiKeyService.DeleteApiKey(id);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 }

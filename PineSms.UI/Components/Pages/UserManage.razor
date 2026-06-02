@@ -170,7 +170,10 @@
                             </div>
                             <div class="d-flex gap-2 justify-content-end">
                                 <button type="submit" class="btn btn-success" disabled="@isSaving">
-                                    @if (isSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
                                     ذخیره
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">انصراف</button>
@@ -198,7 +201,10 @@
                             </div>
                             <div class="d-flex gap-2 justify-content-end">
                                 <button type="submit" class="btn btn-success" disabled="@isSaving">
-                                    @if (isSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
                                     ایجاد
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary" @onclick="CloseModal">انصراف</button>
@@ -222,12 +228,15 @@
                     <button type="button" class="btn-close" @onclick="() => deleteTarget = null"></button>
                 </div>
                 <div class="modal-body">
-                    آیا از حذف کاربر «<strong>@deleteTarget.PersianName</strong>» مطمئن هستید؟<br />
+                    آیا از حذف کاربر «<strong>@deleteTarget.PersianName</strong>» مطمئن هستید؟<br/>
                     <small class="text-muted">تمام دسترسی‌های منو این کاربر نیز حذف خواهد شد.</small>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-danger" @onclick="ExecuteDelete" disabled="@isSaving">
-                        @if (isSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
                         حذف
                     </button>
                     <button class="btn btn-outline-secondary" @onclick="() => deleteTarget = null">انصراف</button>
