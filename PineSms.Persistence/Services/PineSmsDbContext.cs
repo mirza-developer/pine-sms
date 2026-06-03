@@ -5,24 +5,8 @@ namespace PineSms.Persistence.Services;
 
 public class PineSmsDbContext : DbContext
 {
-    // Set to true by the design-time factory to suppress database initialization
-    internal static bool SkipInitialization = false;
-
-    public PineSmsDbContext(DbContextOptions<PineSmsDbContext> options) : base(options)
-    {
-        if (SkipInitialization) return;
-
-        if (Database.IsSqlite())
-        {
-            // EnsureCreated creates the schema from the model; safe to call multiple times
-            Database.EnsureCreated();
-        }
-        else
-        {
-            // SQL Server: apply pending migrations (creates DB if not exists)
-            Database.Migrate();
-        }
-    }
+    public PineSmsDbContext(DbContextOptions<PineSmsDbContext> options) 
+        : base(options) { }
 
     public DbSet<Customer> Customer { get; set; }
     public DbSet<SmsLog> SmsLog { get; set; }

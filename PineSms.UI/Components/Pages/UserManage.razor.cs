@@ -127,15 +127,15 @@ public partial class UserManage
         modalError = string.Empty;
         StateHasChanged();
 
-        var (success, message) = await ApiClient.CreateUserAsync(createCommand);
-        if (success)
+        var result = await ApiClient.CreateUserAsync(createCommand);
+        if (result.Success)
         {
             showModal = false;
             await LoadAsync();
         }
         else
         {
-            modalError = message;
+            modalError = result.Message;
         }
 
         isSaving = false;
@@ -162,15 +162,15 @@ public partial class UserManage
         modalError = string.Empty;
         StateHasChanged();
 
-        var (success, message) = await ApiClient.UpdateUserAsync(updateCommand.Id, updateCommand);
-        if (success)
+        var result = await ApiClient.UpdateUserAsync(updateCommand.Id, updateCommand);
+        if (result.Success)
         {
             showModal = false;
             await LoadAsync();
         }
         else
         {
-            modalError = message;
+            modalError = result.Message;
         }
 
         isSaving = false;
@@ -190,10 +190,10 @@ public partial class UserManage
         StateHasChanged();
 
         var targetId = deleteTarget.Id;
-        var (success, _) = await ApiClient.DeleteUserAsync(targetId);
+        var result = await ApiClient.DeleteUserAsync(targetId);
         deleteTarget = null;
 
-        if (success)
+        if (result.Success)
         {
             if (selectedUser?.Id == targetId)
                 selectedUser = null;

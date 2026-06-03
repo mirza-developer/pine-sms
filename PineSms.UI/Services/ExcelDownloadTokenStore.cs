@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using PineSms.Core.Dtos;
 
 namespace PineSms.UI.Services;
 
@@ -9,13 +10,13 @@ namespace PineSms.UI.Services;
 /// </summary>
 public class ExcelDownloadTokenStore
 {
-    private readonly ConcurrentDictionary<string, (List<string> Phones, DateTime CreatedAt)> _tokens = new();
+    private readonly ConcurrentDictionary<string, TokenEntry> _tokens = new();
 
     public string CreateToken(List<string> phoneNumbers)
     {
         Purge();
         var token = Guid.NewGuid().ToString("N");
-        _tokens[token] = (phoneNumbers, DateTime.UtcNow);
+        _tokens[token] = new TokenEntry { Phones = phoneNumbers, CreatedAt = DateTime.UtcNow };
         return token;
     }
 

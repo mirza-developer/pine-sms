@@ -67,26 +67,26 @@ public partial class AnanasTrackingImport
         }
 
         // Collect all data rows
-        var rows = new List<(string orderCode, string barcode)>();
+        var rows = new List<TrackingDataRow>();
         while (reader.Read())
         {
             var orderCodeRaw = reader.GetValue(orderCodeColIdx)?.ToString()?.Trim();
             var barcodeRaw = reader.GetValue(barcodeColIdx)?.ToString()?.Trim();
 
             if (!string.IsNullOrEmpty(orderCodeRaw) && !string.IsNullOrEmpty(barcodeRaw))
-                rows.Add((orderCodeRaw, barcodeRaw));
+                rows.Add(new TrackingDataRow { OrderCode = orderCodeRaw, Barcode = barcodeRaw });
         }
 
         // Drop the last row (جمع کل summary row)
         if (rows.Count > 0)
             rows.RemoveAt(rows.Count - 1);
 
-        foreach (var (orderCode, barcode) in rows)
+        foreach (var row in rows)
         {
             entries.Add(new TrackingEntry
             {
-                OrderCode = orderCode,
-                PostalTrackingCode = barcode
+                OrderCode = row.OrderCode,
+                PostalTrackingCode = row.Barcode
             });
         }
     }

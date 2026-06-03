@@ -29,9 +29,9 @@ public class UserController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateUserCommand command)
     {
-        var (success, message) = await authService.CreateUserAsync(command);
-        if (!success) return BadRequest(new { message });
-        return Ok(new { message });
+        var result = await authService.CreateUserAsync(command);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 
     /// <summary>Updates a user's Persian name and optionally their password.</summary>
@@ -39,9 +39,9 @@ public class UserController : ControllerBase
     public async Task<IActionResult> Update(string id, [FromBody] UpdateUserCommand command)
     {
         command.Id = id;
-        var (success, message) = await authService.UpdateUserAsync(command);
-        if (!success) return BadRequest(new { message });
-        return Ok(new { message });
+        var result = await authService.UpdateUserAsync(command);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 
     /// <summary>Deletes a non-admin user and clears their menu link assignments.</summary>
@@ -51,8 +51,8 @@ public class UserController : ControllerBase
         // Clear the user's menu link assignments before deleting the identity record
         await menuLinkService.SaveUserMenuLinksAsync(id, []);
 
-        var (success, message) = await authService.DeleteUserAsync(id);
-        if (!success) return BadRequest(new { message });
-        return Ok(new { message });
+        var result = await authService.DeleteUserAsync(id);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 }

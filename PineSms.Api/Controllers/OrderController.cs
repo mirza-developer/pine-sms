@@ -70,9 +70,9 @@ public class OrderController : ControllerBase
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> UpsertStatus([FromBody] UpsertOrderStatusCommand command)
     {
-        var (success, message) = await orderService.UpsertOrderStatus(command);
-        if (!success) return BadRequest(new { message });
-        return Ok(new { message });
+        var result = await orderService.UpsertOrderStatus(command);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 
     [HttpDelete("statuses/{id:int}")]
@@ -80,9 +80,9 @@ public class OrderController : ControllerBase
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> DeleteStatus(int id)
     {
-        var (success, message) = await orderService.DeleteOrderStatus(id);
-        if (!success) return BadRequest(new { message });
-        return Ok(new { message });
+        var result = await orderService.DeleteOrderStatus(id);
+        if (!result.Success) return BadRequest(new { message = result.Message });
+        return Ok(new { message = result.Message });
     }
 
     [HttpGet("statistics")]

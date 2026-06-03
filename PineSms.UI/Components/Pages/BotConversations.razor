@@ -73,7 +73,7 @@
                         <div class="chat-bubble @(msg.IsFromBot ? "chat-bubble-bot" : "chat-bubble-user")">
                             <div class="chat-text">@msg.MessageText</div>
                             <div class="chat-time text-muted small mt-1">
-                                @PersianDateHelper.ToPersianDate(msg.SentAt)
+                                @PersianCalendarTools.GregorianToPersian(msg.SentAt)
                                 @msg.SentAt.ToLocalTime().ToString("HH:mm")
                                 @if (msg.IsFromBot)
                                 {
@@ -131,7 +131,7 @@
                                             <span class="bi bi-person-circle me-1 text-primary"></span>@item.BaleUsername
                                         </td>
                                         <td class="align-middle">
-                                            @PersianDateHelper.ToPersianDate(item.LastMessageAt)
+                                            @PersianCalendarTools.GregorianToPersian(item.LastMessageAt)
                                             <span class="text-muted small ms-1">@item.LastMessageAt.ToLocalTime().ToString("HH:mm")</span>
                                         </td>
                                         <td class="align-middle">

@@ -39,18 +39,19 @@ public class ApiKeyRepository : IApiKeyService
 
     public async Task<List<ApiKey>> GetAllApiKeys()
     {
-        return await dbContext.ApiKey.OrderByDescending(k => k.CreatedAt).ToListAsync();
+        return await dbContext.ApiKey.AsNoTracking().OrderByDescending(k => k.CreatedAt).ToListAsync();
     }
 
-    public async Task<(bool success, string message)> DeleteApiKey(int id)
+    public async Task<DeleteApiKeyResult> DeleteApiKey(int id)
     {
         var apiKey = await dbContext.ApiKey.FindAsync(id);
         if (apiKey == null)
-            return (false, "کلید API یافت نشد");
+            return new DeleteApiKeyResult { Success = false, Message = "کلید API یافت نشد" };
 
         dbContext.ApiKey.Remove(apiKey);
         await dbContext.SaveChangesAsync();
-        return (true, "کلید API حذف شد");
+
+        return new DeleteApiKeyResult { Success = true, Message = "کلید API حذف شد" };
     }
 
     public async Task<bool> ValidateApiKey(string key)

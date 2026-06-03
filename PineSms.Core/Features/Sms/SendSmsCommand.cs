@@ -9,10 +9,3 @@ public class SendSmsCommand
     public DateTime? CustomFrom { get; set; }
     public DateTime? CustomTo { get; set; }
 }
-
-public class SendSmsResult
-{
-    public bool Success { get; set; }
-    public int SentCount { get; set; }
-    public string Message { get; set; } = string.Empty;
-}

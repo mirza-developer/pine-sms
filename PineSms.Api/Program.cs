@@ -23,10 +23,13 @@ builder.Host.UseSerilog((context, services, loggerConfig) => loggerConfig
     .Enrich.FromLogContext()
     .Enrich.WithProperty("AppName", "PineSms.Api")
     .WriteTo.Console()
+#if DEBUG
     .WriteTo.Debug()
+#endif
     .WriteTo.Seq(context.Configuration["Seq:ServerUrl"]));
 
 builder.Services.AddControllers();
+builder.Services.AddResponseCompression();
 builder.Services.AddCoreServices();
 builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
@@ -72,6 +75,10 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+app.Services.InitializeDatabase();
+
+app.UseResponseCompression();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<AppExceptionHandlerMiddleware>();
 app.UseCors();
