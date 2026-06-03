@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 
 namespace PineSms.OrderTrack.Services;
 
@@ -15,7 +16,10 @@ public class OrderTrackingService(HttpClient httpClient)
             if (!response.IsSuccessStatusCode)
                 return (false, null, $"خطا در دریافت اطلاعات (کد {(int)response.StatusCode})");
 
-            var result = await response.Content.ReadFromJsonAsync<OrderTrackResult>();
+            // Trim-safe: uses the source-generated JsonTypeInfo<OrderTrackResult>
+            var result = await response.Content.ReadFromJsonAsync(
+                OrderTrackResultContext.Default.OrderTrackResult);
+
             return (true, result, null);
         }
         catch (Exception ex)
@@ -25,6 +29,7 @@ public class OrderTrackingService(HttpClient httpClient)
     }
 }
 
+
 public class OrderTrackResult
 {
     public bool Found { get; set; }
@@ -32,4 +37,10 @@ public class OrderTrackResult
     public string StatusTitle { get; set; } = string.Empty;
     public string? PostalTrackingCode { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+[JsonSerializable(typeof(OrderTrackResult))]
+public partial class OrderTrackResultContext : JsonSerializerContext
+{
+
 }
