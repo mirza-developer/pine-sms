@@ -5,8 +5,7 @@
       "wwwroot/css/app.css"
     ],
     "minify": {
-      "enabled": true,
-      "commentMode": "all"
+      "enabled": true
     }
   }
 ]
