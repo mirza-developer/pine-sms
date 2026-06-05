@@ -39,6 +39,9 @@ public class OrderTrackResult
     public DateTime UpdatedAt { get; set; }
 }
 
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    PropertyNameCaseInsensitive = true)]
 [JsonSerializable(typeof(OrderTrackResult))]
 public partial class OrderTrackResultContext : JsonSerializerContext
 {
