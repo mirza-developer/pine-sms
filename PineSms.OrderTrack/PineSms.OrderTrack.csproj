@@ -14,6 +14,14 @@
     <BlazorWebAssemblyLoadAllGlobalizationData>false</BlazorWebAssemblyLoadAllGlobalizationData>
   </PropertyGroup>
 
+  <!-- Keep the app's own assembly fully un-trimmed so Razor components instantiated
+       reflectively by the Router (e.g. NotFoundPage="typeof(Pages.NotFound)") keep
+       their generated parameterless constructors. The app assembly is small; the
+       framework assemblies are still trimmed. -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="$(MSBuildProjectName)" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
