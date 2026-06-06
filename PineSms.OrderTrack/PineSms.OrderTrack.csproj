@@ -10,6 +10,22 @@
     <TrimMode>full</TrimMode>
     <CompressionEnabled>true</CompressionEnabled>
     <BlazorEnableCompression>true</BlazorEnableCompression>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <BlazorWebAssemblyLoadAllGlobalizationData>false</BlazorWebAssemblyLoadAllGlobalizationData>
+  </PropertyGroup>
+
+  <!-- Keep the app's own assembly fully un-trimmed so Razor components instantiated
+       reflectively by the Router (e.g. NotFoundPage="typeof(Pages.NotFound)") keep
+       their generated parameterless constructors. The app assembly is small; the
+       framework assemblies are still trimmed. -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="$(MSBuildProjectName)" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,13 +33,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BuildBundlerMinifier" Version="3.2.449" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.8" PrivateAssets="all" />
+    <Content Remove="wwwroot\lib\bootstrap\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PineSms.Shared\PineSms.Shared.csproj" />
+    <PackageReference Include="BuildBundlerMinifier" Version="3.2.449" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.8" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>
