@@ -60,6 +60,10 @@ try
     }
     else
         builder.Services.AddSingleton<IChatAgentService, ChatAgentService>();
+
+    var businessSettings = builder.Configuration.GetSection("Business").Get<BusinessSettings>() ?? new BusinessSettings();
+    builder.Services.AddSingleton(businessSettings);
+
     builder.Services.AddSingleton<BotChatMessageQueue>();
     builder.Services.AddSingleton<ChatSessionStore>();
     builder.Services.AddSingleton<PhotoMessageStore>();
