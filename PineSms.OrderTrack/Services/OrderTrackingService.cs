@@ -28,19 +28,3 @@ public class OrderTrackingService(HttpClient httpClient)
         }
     }
 }
-
-
-public class OrderTrackResult
-{
-    public bool Found { get; set; }
-    public string OrderCode { get; set; } = string.Empty;
-    public string StatusTitle { get; set; } = string.Empty;
-    public string? PostalTrackingCode { get; set; }
-    public DateTime UpdatedAt { get; set; }
-}
-
-[JsonSerializable(typeof(OrderTrackResult))]
-public partial class OrderTrackResultContext : JsonSerializerContext
-{
-
-}
