@@ -19,7 +19,7 @@ try
     var builder = Host.CreateApplicationBuilder(args);
 
     // Required for running as a Windows Service (handles SCM lifecycle, etc.)
-    builder.Services.AddWindowsService(options => options.ServiceName = "PineSms BaleBot");
+    builder.Services.AddWindowsService(options => options.ServiceName = builder.Configuration["Business:Name"]);
 
     if (!Environment.UserInteractive)
         Directory.SetCurrentDirectory(AppContext.BaseDirectory);

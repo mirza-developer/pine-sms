@@ -20,7 +20,14 @@ namespace PineSms.BaleBot.Services;
 ///  4. If the AI response contains <c>&lt;&lt;FEEDBACK … &gt;&gt;</c> blocks, the feedback
 ///     is routed to the appropriate chat ID based on the feedback type (10 different types supported).
 /// </summary>
-public class BotUpdateHandler : IBotUpdateHandler
+public class BotUpdateHandler(BaleBotClient botClient,
+        PineSmsDbContext dbContext,
+        IChatAgentService agentService,
+        ChatSessionStore sessionStore,
+        BotChatMessageQueue chatMessageQueue,
+        PhotoMessageStore photoMessageStore,
+        ILogger<BotUpdateHandler> logger,
+        IConfiguration configuration) : IBotUpdateHandler
 {
     private const string SupportWaitNotice = "\nلطفاً تا ۷۲ ساعت کاری آینده صبوری کنید. درخواست شما بررسی می‌شود. لطفاً دیگر پیام ندهید، پاسخ‌گویی بر اساس آخرین پیام‌ها انجام می‌شود.";
 
@@ -43,24 +50,6 @@ public class BotUpdateHandler : IBotUpdateHandler
         6309128770,5249048339,5437659346,4427614753,
         5286810467,5135010906
     };
-
-    public BotUpdateHandler(
-        BaleBotClient botClient,
-        PineSmsDbContext dbContext,
-        IChatAgentService agentService,
-        ChatSessionStore sessionStore,
-        BotChatMessageQueue chatMessageQueue,
-        PhotoMessageStore photoMessageStore,
-        ILogger<BotUpdateHandler> logger)
-    {
-        this.botClient = botClient;
-        this.dbContext = dbContext;
-        this.agentService = agentService;
-        this.sessionStore = sessionStore;
-        this.chatMessageQueue = chatMessageQueue;
-        this.photoMessageStore = photoMessageStore;
-        this.logger = logger;
-    }
 
     public async Task HandleAsync(BaleUpdate update, CancellationToken ct)
     {
@@ -87,8 +76,8 @@ public class BotUpdateHandler : IBotUpdateHandler
 
         if (string.IsNullOrEmpty(username))
         {
-            await botClient.SendMessageAsync(chatId, """
-                همراه عزیز مزون آناناس
+            await botClient.SendMessageAsync(chatId, $"""
+                همراه عزیز {configuration["Business:NameFa"]}
                 نام کاربری (آیدی) بله شما در دسترس نیست
                 جهت امکان پذیر شدن ارتباط با شما
                 لطفا نام کاربری (آیدی) خود را ست کنید
@@ -211,7 +200,7 @@ public class BotUpdateHandler : IBotUpdateHandler
     {
         if (string.IsNullOrEmpty(username))
         {
-            const string noUsernameMsg = "دوست عزیز مزون آناناس، لطفاً نام کاربری خود را در بله تنظیم کنید و در دسترس قرار دهید تا بتوانیم به شما پاسخ دهیم.";
+            var noUsernameMsg = $"دوست عزیز {configuration["Business:NameFa"]}، لطفاً نام کاربری خود را در بله تنظیم کنید و در دسترس قرار دهید تا بتوانیم به شما پاسخ دهیم.";
             await botClient.SendMessageAsync(userChatId, noUsernameMsg, ct);
             chatMessageQueue.TryEnqueue(new BotChatMessageEntry(userChatId.ToString(), userChatId, noUsernameMsg, IsFromBot: true, DateTime.UtcNow));
             return;
