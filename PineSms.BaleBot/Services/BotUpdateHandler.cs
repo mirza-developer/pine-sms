@@ -46,9 +46,9 @@ public class BotUpdateHandler(BaleBotClient botClient,
         5477856928,5172013155,5249048339,
         //Akhlaghi Group
         5372010785,5535142626,6188981039,4413431598,
-        5988414706,5000226193,6020396255,6282035661,
-        6309128770,5249048339,5437659346,4427614753,
-        5286810467,5135010906
+        5988414706,6020396255,6282035661,
+        6309128770,5437659346,4427614753,
+        5286810467,5135010906,6108224018
     };
 
     public async Task HandleAsync(BaleUpdate update, CancellationToken ct)
@@ -627,7 +627,7 @@ public class BotUpdateHandler(BaleBotClient botClient,
 
     private async Task HandleInStoreComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
-        string messageSuccess = "✅ پیام شما به پشتیبان‌های ما ارسال شد و تا ۷۲ ساعت کاری  پشتیبان به شما پاسخ میده.";
+        string messageSuccess = "✅ پیام شما به پشتیبان‌های ما ارسال شد و تا ۷۲ ساعت کاری پشتیبان به شما پاسخ میده." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
