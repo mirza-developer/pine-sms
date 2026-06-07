@@ -33,9 +33,15 @@ public class BotUpdateHandler : IBotUpdateHandler
     private readonly ILogger<BotUpdateHandler> logger;
     private readonly List<long> chatIds = new()
     {
+        // Ananas Support Groups
         6318588996,5715522360,6215427121,6137308408,
         5518881690,5000226193,5225037607,6178785306,
-        5477856928,5172013155,5249048339
+        5477856928,5172013155,5249048339,
+        //Akhlaghi Group
+        5372010785,5535142626,6188981039,4413431598,
+        5988414706,5000226193,6020396255,6282035661,
+        6309128770,5249048339,5437659346,4427614753,
+        5286810467,5135010906
     };
 
     public BotUpdateHandler(
@@ -288,6 +294,18 @@ public class BotUpdateHandler : IBotUpdateHandler
 
             case "UnknownQuery":
                 await HandleUnknownQueryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                break;
+
+            case "InStoreBillingError":
+                await HandleInStoreBillingErrorAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                break;
+
+            case "InStoreComplaint":
+                await HandleInStoreComplaintAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
+                break;
+
+            case "StoreHoursQuery":
+                await HandleStoreHoursQueryAsync(userChatId, targetChatId, root, userBaleUsername, username, ct);
                 break;
 
             default:
@@ -579,6 +597,81 @@ public class BotUpdateHandler : IBotUpdateHandler
             userBaleUsername + "\n #unknown";
 
         await botClient.SendMessageAsync(targetChatId, unknownLog, CancellationToken.None);
+    }
+
+    private async Task HandleInStoreBillingErrorAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    {
+        string messageSuccess = "✅ اطلاعات شما ثبت شد. پشتیبانی ما در بله در اسرع وقت به شما پیام می‌دهد." + SupportWaitNotice;
+        await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
+
+        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.GetProperty("FullName").GetString();
+        var branchName = root.GetProperty("BranchName").GetString();
+        var description = root.GetProperty("Description").GetString();
+        bool hasPhoto = root.TryGetProperty("HasPhoto", out var photoEl) && photoEl.GetBoolean();
+
+        string logText = $"🧾 گزارش خطای فاکتور خرید حضوری:\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
+            $"شماره تماس: {phoneNumber}\n" +
+            $"شعبه: {branchName}\n" +
+            $"توضیحات: {description}\n" +
+            $"عکس ارسال شده: {(hasPhoto ? "بله" : "خیر")}" +
+            userBaleUsername + "\n #instorebillingerror";
+
+        await botClient.SendMessageAsync(targetChatId, logText, CancellationToken.None);
+
+        if (hasPhoto)
+        {
+            var storedMessageIds = photoMessageStore.TakePhotos(userChatId);
+            if (storedMessageIds.Count > 0)
+            {
+                foreach (var msgId in storedMessageIds)
+                    await botClient.ForwardMessageAsync(targetChatId, userChatId, msgId, CancellationToken.None);
+            }
+            else
+            {
+                logger.LogWarning("HasPhoto=true for InStoreBillingError but no stored photo found for chat {ChatId}", userChatId);
+            }
+        }
+    }
+
+    private async Task HandleInStoreComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    {
+        string messageSuccess = "✅ پیام شما به پشتیبان‌های ما ارسال شد و تا ۷۲ ساعت کاری  پشتیبان به شما پاسخ میده.";
+        await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
+
+        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
+        var fullName = root.GetProperty("FullName").GetString();
+        var branchName = root.GetProperty("BranchName").GetString();
+        var description = root.GetProperty("Description").GetString();
+
+        string logText = $"🏬 گزارش شکایت از رفتار پرسنل خرید حضوری:\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
+            $"شماره تماس: {phoneNumber}\n" +
+            $"شعبه: {branchName}\n" +
+            $"توضیحات: {description}" +
+            userBaleUsername + "\n #instorecomplaint";
+
+        await botClient.SendMessageAsync(targetChatId, logText, CancellationToken.None);
+    }
+
+    private async Task HandleStoreHoursQueryAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
+    {
+        string messageSuccess = "✅ پیام شما به پشتیبان‌های ما ارسال شد و به زودی ساعت کاری اون تاریخ رو بهتون اطلاع می‌دیم.";
+        await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
+        chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
+
+        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
+        var description = root.TryGetProperty("Description", out var descProp) ? descProp.GetString() : "";
+
+        string logText = $"🕒 درخواست پرسش ساعت کاری تعطیلات:\n" +
+            $"نام و نام خانوادگی: {fullName}\n" +
+            $"توضیحات: {description}" +
+            userBaleUsername + "\n #storehoursquery";
+
+        await botClient.SendMessageAsync(targetChatId, logText, CancellationToken.None);
     }
 
     private async Task<string> LookupOrderAsync(string? orderCode, CancellationToken ct)
