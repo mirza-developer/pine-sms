@@ -19,7 +19,7 @@ try
     var builder = Host.CreateApplicationBuilder(args);
 
     // Required for running as a Windows Service (handles SCM lifecycle, etc.)
-    builder.Services.AddWindowsService(options => options.ServiceName = "PineSms BaleBot");
+    builder.Services.AddWindowsService(options => options.ServiceName = builder.Configuration["Business:Name"]);
 
     if (!Environment.UserInteractive)
         Directory.SetCurrentDirectory(AppContext.BaseDirectory);
@@ -60,6 +60,10 @@ try
     }
     else
         builder.Services.AddSingleton<IChatAgentService, ChatAgentService>();
+
+    var businessSettings = builder.Configuration.GetSection("Business").Get<BusinessSettings>() ?? new BusinessSettings();
+    builder.Services.AddSingleton(businessSettings);
+
     builder.Services.AddSingleton<BotChatMessageQueue>();
     builder.Services.AddSingleton<ChatSessionStore>();
     builder.Services.AddSingleton<PhotoMessageStore>();
