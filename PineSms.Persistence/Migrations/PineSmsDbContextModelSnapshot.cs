@@ -267,7 +267,7 @@ namespace PineSms.Persistence.Migrations
                             IconName = "bi-box-seam-fill",
                             IsShown = true,
                             SectionLabel = "سفارشات",
-                            Title = "بارکد پستی آناناس",
+                            Title = "بارکد پستی",
                             Url = "/order/ananas-tracking"
                         },
                         new

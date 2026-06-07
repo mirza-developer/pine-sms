@@ -1,4 +1,5 @@
 ﻿@page "/"
+@inject PineSms.OrderTrack.Services.BusinessSettings Business
 
 <PageTitle>پیگیری سفارش</PageTitle>
 
@@ -7,7 +8,7 @@
 
         <nav class="ot-breadcrumbs" aria-label="مسیر">
             <ol>
-                <li><a href="https://ananas-collectionn.com/" target="_blank" rel="noopener">خانه</a></li>
+                <li><a href="@Business.WebsiteUrl" target="_blank" rel="noopener">خانه</a></li>
                 <li><span>پیگیری سفارش</span></li>
             </ol>
         </nav>
@@ -15,7 +16,7 @@
         <h1 class="ot-page-title">پیگیری سفارش</h1>
 
         <div class="ot-intro">
-            <p>با تشکر از خرید و اعتماد شما به مجموعه اناناس کالکشن</p>
+            <p>با تشکر از خرید و اعتماد شما به @Business.NameFa</p>
             <p>
                 <strong>مرحله اول:</strong> لطفاً
                 <span class="ot-highlight">پس از گذشت ۷۲ ساعت</span>
@@ -27,7 +28,7 @@
                 از طریق سامانه رهگیری پست از وضعیت بسته خود مطلع شوید.
             </p>
             <p class="ot-warning">
-                چنانچه بسته شما بعد از ۸ روز کاری (روزهای جمعه و تعطیلات رسمی روز کاری نمی‌باشد) نرسید، فقط از طریق پیام‌رسان بله <a href="https://ble.ir/ananas_support_bot" target="_blank"><strong dir="ltr">@@ananas_support_bot</strong></a> با ما در ارتباط باشید. تماس تلفنی جوابگویی نداریم.
+                چنانچه بسته شما بعد از ۸ روز کاری (روزهای جمعه و تعطیلات رسمی روز کاری نمی‌باشد) نرسید، فقط از طریق پیام‌رسان بله <a href="@Business.SupportBaleUrl" target="_blank"><strong dir="ltr">@Business.SupportBaleUsername</strong></a> با ما در ارتباط باشید. تماس تلفنی جوابگویی نداریم.
             </p>
         </div>
 
