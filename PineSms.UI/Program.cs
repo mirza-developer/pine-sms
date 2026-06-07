@@ -56,9 +56,6 @@ builder.Services.AddScoped<MenuAccessStateService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddSingleton<ExcelDownloadTokenStore>();
 
-var businessSettings = builder.Configuration.GetSection("Business").Get<PineSms.UI.Services.BusinessSettings>() ?? new PineSms.UI.Services.BusinessSettings();
-builder.Services.AddSingleton(businessSettings);
-
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

@@ -60,7 +60,7 @@ namespace PineSms.Persistence.Migrations
                     { 2, 2, "bi-person-plus-fill", true, "مشتریان", "افزودن مشتری", "/customer/add" },
                     { 3, 3, "bi-file-earmark-excel-fill", true, "مشتریان", "ورود از اکسل", "/customer/import" },
                     { 4, 4, "bi-tags-fill", true, "سفارشات", "وضعیت‌های سفارش", "/order/statuses" },
-                    { 5, 5, "bi-box-seam-fill", true, "سفارشات", "بارکد پستی", "/order/ananas-tracking" },
+                    { 5, 5, "bi-box-seam-fill", true, "سفارشات", "بارکد پستی آناناس", "/order/ananas-tracking" },
                     { 6, 6, "bi-key-fill", true, "تنظیمات", "کلیدهای API", "/settings/apikeys" },
                     { 7, 7, "bi-chat-dots-fill", true, "ربات بله", "مکالمات کاربران", "/bot/conversations" }
                 });

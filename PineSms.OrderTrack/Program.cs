@@ -20,7 +20,4 @@ builder.Services.AddScoped(sp =>
 
 builder.Services.AddScoped<OrderTrackingService>();
 
-var businessSettings = builder.Configuration.GetSection("Business").Get<BusinessSettings>() ?? new BusinessSettings();
-builder.Services.AddSingleton(businessSettings);
-
 await builder.Build().RunAsync();

@@ -1,6 +1,4 @@
 @inherits LayoutComponentBase
-@using PineSms.UI.Services
-@inject BusinessSettings Business
 @if (!isAuthInitialized)
 {
     <div class="d-flex justify-content-center align-items-center" style="min-height:100vh;">
@@ -22,8 +20,8 @@ else
                 <a class="brand-link" href="">
                     <span class="brand-icon bi bi-tree-fill"></span>
                     <div class="brand-text">
-                        <span class="brand-name">@Business.Name</span>
-                        <span class="brand-tagline">@Business.Tagline</span>
+                        <span class="brand-name">PineSms</span>
+                        <span class="brand-tagline">مدیریت پیامک</span>
                     </div>
                 </a>
                 @* Close button – only visible on mobile inside the open drawer *@
@@ -56,7 +54,7 @@ else
                 <button class="toggler-btn toggler-btn--light d-md-none" title="باز کردن منو" @onclick="ToggleNavMenu">
                     <span class="bi bi-list"></span>
                 </button>
-                <span class="fw-semibold text-secondary d-md-none ms-1" style="font-size:.85rem;">@Business.Name</span>
+                <span class="fw-semibold text-secondary d-md-none ms-1" style="font-size:.85rem;">PineSms</span>
 
                 @if (AuthState.IsAuthenticated)
                 {

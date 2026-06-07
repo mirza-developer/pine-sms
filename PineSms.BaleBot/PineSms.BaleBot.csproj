@@ -23,9 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Chat\chtbot-instructions-akhlaghi.md">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="Chat\chtbot-instructions-main.md">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

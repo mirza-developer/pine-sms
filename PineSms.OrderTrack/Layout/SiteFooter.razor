@@ -1,64 +1,50 @@
-@inject BusinessSettings Business
-
 <footer class="site-footer" id="site-footer" role="contentinfo">
     <div class="footer-main">
         <div class="container footer-grid">
 
             <div class="footer-col footer-brand">
-                <a href="@Business.WebsiteUrl" target="_blank" rel="noopener" class="logo-link">
-                    <img src="@Business.LogoUrl"
-                         class="site-logo" alt="@Business.LogoAlt" loading="lazy" />
+                <a href="https://ananas-collectionn.com/" target="_blank" rel="noopener" class="logo-link">
+                    <img src="https://ananas-collectionn.com/wp-content/uploads/2024/12/ananas-logo.png"
+                         class="site-logo" alt="مزون اناناس" loading="lazy" />
                 </a>
                 <div class="footer-about">
                     <p>فروش فقط به صورت آنلاین (فروش حضوری نداریم)</p>
                 </div>
                 <ul class="footer-social">
-                    @if (!string.IsNullOrEmpty(Business.TelegramUrl))
-                    {
-                        <li>
-                            <a href="@Business.TelegramUrl" rel="noopener" target="_blank" aria-label="تلگرام" class="social-telegram">
-                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M9.8 16.6l-.4 4c.5 0 .7-.2 1-.4l2.5-2.3 5.1 3.7c.9.5 1.6.2 1.9-.9l3.4-16h0c.3-1.3-.5-1.8-1.4-1.5L1.3 9.6C0 10.1 0 10.8 1 11.1l5.2 1.6L18.4 5.5c.6-.4 1.1-.2.7.2"></path></svg>
-                            </a>
-                        </li>
-                    }
-                    @if (!string.IsNullOrEmpty(Business.InstagramUrl))
-                    {
-                        <li>
-                            <a href="@Business.InstagramUrl" rel="noopener" target="_blank" aria-label="اینستاگرام">
-                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                                    <path fill="none" stroke="currentColor" stroke-width="1.8"
-                                          d="M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2z" />
-                                    <path fill="none" stroke="currentColor" stroke-width="1.8"
-                                          d="M16 11.4A4 4 0 1 1 12.6 8a4 4 0 0 1 3.4 3.4z" />
-                                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
-                                </svg>
-                            </a>
-                        </li>
-                    }
-                    @if (!string.IsNullOrEmpty(Business.RubikaUrl))
-                    {
-                        <li>
-                            <a href="@Business.RubikaUrl" rel="noopener" target="_blank" aria-label="روبیکا">
-                                <img src="@Business.RubikaIconUrl"
-                                     alt="" width="22" height="22" loading="lazy" />
-                            </a>
-                        </li>
-                    }
-                    @if (!string.IsNullOrEmpty(Business.BaleChannelUrl))
-                    {
-                        <li>
-                            <a href="@Business.BaleChannelUrl" rel="noopener" target="_blank" aria-label="بله">
-                                <img src="@Business.BaleIconUrl"
-                                     alt="" width="22" height="22" loading="lazy" />
-                            </a>
-                        </li>
-                    }
+                    <li>
+                        <a href="https://t.me/ananas_mezon" rel="noopener" target="_blank" aria-label="تلگرام" class="social-telegram">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M9.8 16.6l-.4 4c.5 0 .7-.2 1-.4l2.5-2.3 5.1 3.7c.9.5 1.6.2 1.9-.9l3.4-16h0c.3-1.3-.5-1.8-1.4-1.5L1.3 9.6C0 10.1 0 10.8 1 11.1l5.2 1.6L18.4 5.5c.6-.4 1.1-.2.7.2"></path></svg>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://instagram.com/ananas__collection" rel="noopener" target="_blank" aria-label="اینستاگرام">
+                            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                                <path fill="none" stroke="currentColor" stroke-width="1.8"
+                                      d="M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2z" />
+                                <path fill="none" stroke="currentColor" stroke-width="1.8"
+                                      d="M16 11.4A4 4 0 1 1 12.6 8a4 4 0 0 1 3.4 3.4z" />
+                                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+                            </svg>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://rubika.ir/ananas_mezon" rel="noopener" target="_blank" aria-label="روبیکا">
+                            <img src="https://ananas-collectionn.com/wp-content/themes/ananas/assets/img/social/rubika.png"
+                                 alt="" width="22" height="22" loading="lazy" />
+                        </a>
+                    </li>
+                    <li>
+                        <a href="http://ble.ir/join/GjY6MAY1ci" rel="noopener" target="_blank" aria-label="بله">
+                            <img src="https://ananas-collectionn.com/wp-content/themes/ananas/assets/img/social/bale.png"
+                                 alt="" width="22" height="22" loading="lazy" />
+                        </a>
+                    </li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h3>اطلاعات تماس</h3>
                 <div class="footer-contact-intro">
-                    <p>پیگیری سفارش در صورتی که بسته شما ۱ تا ۸ روز کاری (روزهای جمعه و تعطیلات رسمی حساب نمیشه) نرسید یا موردی داشت فقط از طریق پیام‌رسان بله: <a href="@Business.SupportBaleUrl" target="_blank"><strong dir="ltr">@Business.SupportBaleUsername</strong></a></p>
+                    <p>پیگیری سفارش در صورتی که بسته شما ۱ تا ۸ روز کاری (روزهای جمعه و تعطیلات رسمی حساب نمیشه) نرسید یا موردی داشت فقط از طریق پیام‌رسان بله: <a href="https://ble.ir/ananas_support_bot" target="_blank"><strong dir="ltr">@@ananas_support_bot</strong></a></p>
                     <p>فقط پیام ارسال کنید.</p>
                     <p class="footer-no-call">تماس تلفنی به هیچ عنوان پاسخ داده نمیشود.</p>
                 </div>
@@ -68,7 +54,7 @@
 
     <div class="footer-bottom">
         <div class="container">
-            <p>@Business.CopyrightFa</p>
+            <p>تمام حقوق این وب‌سایت برای مزون آناناس محفوظ است.</p>
         </div>
     </div>
 </footer>

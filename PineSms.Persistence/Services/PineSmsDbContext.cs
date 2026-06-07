@@ -81,7 +81,7 @@ public class PineSmsDbContext : DbContext
             new MenuLink { Id = 2, Title = "افزودن مشتری", Url = "/customer/add", IconName = "bi-person-plus-fill", SectionLabel = "مشتریان", DisplayOrder = 2 },
             new MenuLink { Id = 3, Title = "ورود از اکسل", Url = "/customer/import", IconName = "bi-file-earmark-excel-fill", SectionLabel = "مشتریان", DisplayOrder = 3 },
             new MenuLink { Id = 4, Title = "وضعیت‌های سفارش", Url = "/order/statuses", IconName = "bi-tags-fill", SectionLabel = "سفارشات", DisplayOrder = 4 },
-            new MenuLink { Id = 5, Title = "بارکد پستی", Url = "/order/ananas-tracking", IconName = "bi-box-seam-fill", SectionLabel = "سفارشات", DisplayOrder = 5 },
+            new MenuLink { Id = 5, Title = "بارکد پستی آناناس", Url = "/order/ananas-tracking", IconName = "bi-box-seam-fill", SectionLabel = "سفارشات", DisplayOrder = 5 },
             new MenuLink { Id = 6, Title = "کلیدهای API", Url = "/settings/apikeys", IconName = "bi-key-fill", SectionLabel = "تنظیمات", DisplayOrder = 6 },
             new MenuLink { Id = 7, Title = "مکالمات کاربران", Url = "/bot/conversations", IconName = "bi-chat-dots-fill", SectionLabel = "ربات بله", DisplayOrder = 7 }
         );
