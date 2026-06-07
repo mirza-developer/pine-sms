@@ -30,14 +30,6 @@ public class BotUpdateHandler(BaleBotClient botClient,
         IConfiguration configuration) : IBotUpdateHandler
 {
     private const string SupportWaitNotice = "\nلطفاً تا ۷۲ ساعت کاری آینده صبوری کنید. درخواست شما بررسی می‌شود. لطفاً دیگر پیام ندهید، پاسخ‌گویی بر اساس آخرین پیام‌ها انجام می‌شود.";
-
-    private readonly BaleBotClient botClient;
-    private readonly PineSmsDbContext dbContext;
-    private readonly IChatAgentService agentService;
-    private readonly ChatSessionStore sessionStore;
-    private readonly BotChatMessageQueue chatMessageQueue;
-    private readonly PhotoMessageStore photoMessageStore;
-    private readonly ILogger<BotUpdateHandler> logger;
     private readonly List<long> chatIds = new()
     {
         // Ananas Support Groups
@@ -627,7 +619,7 @@ public class BotUpdateHandler(BaleBotClient botClient,
 
     private async Task HandleInStoreComplaintAsync(long userChatId, long targetChatId, JsonElement root, string userBaleUsername, string username, CancellationToken ct)
     {
-        string messageSuccess = "✅ پیام شما به پشتیبان‌های ما ارسال شد و تا ۷۲ ساعت کاری  پشتیبان به شما پاسخ میده.";
+        string messageSuccess = "✅ پیام شما به پشتیبان‌های ما ارسال شد و تا ۷۲ ساعت کاری پشتیبان به شما پاسخ میده." + SupportWaitNotice;
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 

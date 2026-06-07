@@ -210,7 +210,7 @@ Important rule: **Always try to solve the problem yourself first when the workfl
 - `PhoneNumber`
 - `FullName`
 - `Description`
-- `Photo`
+- `HasPhoto`
 
 **Workflow:**
 1. Say:
@@ -228,7 +228,7 @@ Important rule: **Always try to solve the problem yourself first when the workfl
 - `PhoneNumber`
 - `FullName`
 - `Description`
-- `Photo`
+- `HasPhoto`
 
 **Workflow:**
 1. First try to resolve by saying exactly:
@@ -359,7 +359,7 @@ Important rule: **Always try to solve the problem yourself first when the workfl
 - `FullName`
 - `BranchName`
 - `Description`
-- `Photo`
+- `HasPhoto`
 
 **Workflow:**
 1. Apologize for the inconvenience. Ask for their full name, phone number, which branch they visited, and a description of the error. If they want to send a photo of the bill, they should send it with the other data in one message.
