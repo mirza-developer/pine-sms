@@ -101,12 +101,15 @@
             }
         </div>
 
-        <a href="https://tracking.post.ir/" target="_blank" rel="noopener" class="ot-post-btn">
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-            ورود به سامانه رهگیری مرسولات پستی
-        </a>
+        @if (!string.IsNullOrEmpty(Business.PostalTrackingUrl))
+        {
+            <a href="@Business.PostalTrackingUrl" target="_blank" rel="noopener" class="ot-post-btn">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+                ورود به سامانه رهگیری مرسولات پستی
+            </a>
+        }
 
     </div>
 </div>

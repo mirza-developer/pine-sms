@@ -1,5 +1,22 @@
 namespace PineSms.OrderTrack.Services;
 
+public class ColorPalette
+{
+    public string PineBg { get; set; } = string.Empty;
+    public string PineSurface { get; set; } = string.Empty;
+    public string PineNeutral { get; set; } = string.Empty;
+    public string PineText { get; set; } = string.Empty;
+    public string PineAccent1 { get; set; } = string.Empty;
+    public string PineAccent2 { get; set; } = string.Empty;
+    public string PineAccent2Dark { get; set; } = string.Empty;
+    public string PineAccent2Darker { get; set; } = string.Empty;
+    public string PineAccent2Light { get; set; } = string.Empty;
+    public string PineFooterBg { get; set; } = string.Empty;
+    public string PineFooterBottom { get; set; } = string.Empty;
+    public string PineFooterText { get; set; } = string.Empty;
+    public string PineTopbar { get; set; } = string.Empty;
+}
+
 public class NavItemConfig
 {
     public string Title { get; set; } = string.Empty;
@@ -23,6 +40,9 @@ public class BusinessSettings
     public string RubikaUrl { get; set; } = string.Empty;
     public string RubikaIconUrl { get; set; } = string.Empty;
     public string BaleIconUrl { get; set; } = string.Empty;
+    public ColorPalette Colors { get; set; } = new();
+    public string AboutFa { get; set; } = string.Empty;
+    public string PostalTrackingUrl { get; set; } = string.Empty;
     public string CopyrightFa { get; set; } = string.Empty;
     public List<NavItemConfig> NavItems { get; set; } = new();
 }

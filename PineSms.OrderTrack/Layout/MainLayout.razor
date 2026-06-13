@@ -1,4 +1,20 @@
 ﻿@inherits LayoutComponentBase
+@inject BusinessSettings Business
+
+<HeadContent>
+    @if (!string.IsNullOrEmpty(Business.WebsiteUrl))
+    {
+        <link rel="preconnect" href="@(Business.WebsiteUrl.TrimEnd('/'))" crossorigin />
+    }
+    @if (!string.IsNullOrEmpty(Business.LogoUrl))
+    {
+        <link rel="preload" as="image" href="@Business.LogoUrl" fetchpriority="high" />
+    }
+    @if (!string.IsNullOrEmpty(_colorsCss))
+    {
+        @((MarkupString)("<style>" + _colorsCss + "</style>"))
+    }
+</HeadContent>
 
 <SiteHeader />
 
@@ -9,3 +25,28 @@
 <SiteFooter />
 
 <MobileNav />
+
+@code {
+    private string _colorsCss
+    {
+        get
+        {
+            var c = Business.Colors;
+            var sb = new System.Text.StringBuilder();
+            if (!string.IsNullOrEmpty(c.PineBg))      sb.Append("--pine-bg:").Append(c.PineBg).Append(';');
+            if (!string.IsNullOrEmpty(c.PineSurface)) sb.Append("--pine-surface:").Append(c.PineSurface).Append(';');
+            if (!string.IsNullOrEmpty(c.PineNeutral)) sb.Append("--pine-neutral:").Append(c.PineNeutral).Append(';');
+            if (!string.IsNullOrEmpty(c.PineText))    sb.Append("--pine-text:").Append(c.PineText).Append(';');
+            if (!string.IsNullOrEmpty(c.PineAccent1)) sb.Append("--pine-accent1:").Append(c.PineAccent1).Append(';');
+            if (!string.IsNullOrEmpty(c.PineAccent2))        sb.Append("--pine-accent2:").Append(c.PineAccent2).Append(';');
+            if (!string.IsNullOrEmpty(c.PineAccent2Dark))    sb.Append("--pine-accent2-dark:").Append(c.PineAccent2Dark).Append(';');
+            if (!string.IsNullOrEmpty(c.PineAccent2Darker))  sb.Append("--pine-accent2-darker:").Append(c.PineAccent2Darker).Append(';');
+            if (!string.IsNullOrEmpty(c.PineAccent2Light))   sb.Append("--pine-accent2-light:").Append(c.PineAccent2Light).Append(';');
+            if (!string.IsNullOrEmpty(c.PineFooterBg))       sb.Append("--pine-footer-bg:").Append(c.PineFooterBg).Append(';');
+            if (!string.IsNullOrEmpty(c.PineFooterBottom))   sb.Append("--pine-footer-bottom:").Append(c.PineFooterBottom).Append(';');
+            if (!string.IsNullOrEmpty(c.PineFooterText))     sb.Append("--pine-footer-text:").Append(c.PineFooterText).Append(';');
+            if (!string.IsNullOrEmpty(c.PineTopbar))         sb.Append("--pine-topbar:").Append(c.PineTopbar).Append(';');
+            return sb.Length > 0 ? ":root{" + sb + "}" : string.Empty;
+        }
+    }
+}

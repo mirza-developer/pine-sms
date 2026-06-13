@@ -2,14 +2,16 @@
     <div class="header-main-bar" id="header-main">
         <div class="container header-inner">
             <div class="header-logo">
-                <a href="@Business.WebsiteUrl" target="_blank" rel="noopener" class="logo-link">
-                    <img src="@Business.LogoUrl"
-                         class="site-logo" alt="@Business.LogoAlt"
-                         fetchpriority="high" decoding="async"
-                         width="160" height="48" />
-                </a>
+                @if(!string.IsNullOrEmpty(Business.LogoUrl))
+                {
+                    <a href="@Business.WebsiteUrl" target="_blank" rel="noopener" class="logo-link">
+                        <img src="@Business.LogoUrl"
+                             class="site-logo" alt="@Business.LogoAlt"
+                             fetchpriority="high" decoding="async"
+                             width="160" height="48" />
+                    </a>
+                }
             </div>
-
             <nav class="header-nav" role="navigation" aria-label="منوی اصلی">
                 <ul class="primary-menu">
                     @foreach (var item in Business.NavItems)
