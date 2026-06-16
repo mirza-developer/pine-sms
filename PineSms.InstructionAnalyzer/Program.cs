@@ -6,6 +6,8 @@ using PineSms.Core.Entities;
 using PineSms.Persistence.Services;
 using System.ClientModel;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 Console.WriteLine("=== PineSms Instruction Analyzer ===");
 Console.WriteLine();
@@ -22,7 +24,7 @@ var apiKey = config["AiAgent:ApiKey"];
 var model = config["AiAgent:Model"] ?? "gpt-4.1";
 var endpoint = config["AiAgent:Endpoint"] ?? "https://models.github.ai/inference";
 var instructionFilePath = config["InstructionFilePath"] ?? "../PineSms.BaleBot/Chat/chtbot-instructions-main.md";
-var outputFilePath = config["OutputFilePath"] ?? "instruction-analysis-recommendations.txt";
+var historyDirectory = config["HistoryDirectory"] ?? Path.Combine(Path.GetDirectoryName(instructionFilePath)!, "history");
 
 if (string.IsNullOrWhiteSpace(apiKey))
 {
@@ -53,7 +55,7 @@ using (var dbContext = new PineSmsDbContext(optionsBuilder.Options))
         .OrderBy(m => m.SentAt)
         .ToListAsync();
 
-    messages = messages.OrderByDescending(p=>p.SentAt).Take(400).ToList();
+    messages = messages.OrderByDescending(p => p.SentAt).Take(400).ToList();
 }
 
 Console.WriteLine($"Loaded {messages.Count} chat messages.");
@@ -61,7 +63,7 @@ Console.WriteLine($"Loaded {messages.Count} chat messages.");
 if (messages.Count == 0)
 {
     Console.WriteLine("WARNING: No chat messages found in the database.");
-    Console.WriteLine("The analysis will continue but may not provide meaningful recommendations.");
+    Console.WriteLine("The analysis will continue but may not provide meaningful results.");
 }
 
 // Read instruction file
@@ -82,17 +84,45 @@ catch (Exception ex)
 Console.WriteLine("Preparing analysis prompt...");
 var promptBuilder = new StringBuilder();
 
-promptBuilder.AppendLine("I am analyzing a chatbot system. Below you will find:");
-promptBuilder.AppendLine("1. All real chat messages between users and the chatbot");
-promptBuilder.AppendLine("2. The current instruction file that the chatbot follows");
+promptBuilder.AppendLine("You are analyzing a chatbot instruction file to make it clearer and more effective for an AI agent.");
+promptBuilder.AppendLine("You will be given:");
+promptBuilder.AppendLine("1. Recent real chat messages between users and the chatbot");
+promptBuilder.AppendLine("2. The current instruction file that governs the chatbot's behavior");
 promptBuilder.AppendLine();
-promptBuilder.AppendLine("Your task is to analyze these messages and the instruction file, then provide recommendations for:");
-promptBuilder.AppendLine("- New subjects or topics that should be added to the instruction file");
-promptBuilder.AppendLine("- New commands or workflows that would improve user experience");
-promptBuilder.AppendLine("- Common user questions or issues that are not currently covered");
-promptBuilder.AppendLine("- Any patterns in user interactions that suggest missing functionality");
+promptBuilder.AppendLine("Your task is to identify specific improvements that make the instruction file easier for an AI agent to understand and follow.");
+promptBuilder.AppendLine("Focus ONLY on clarity, wording precision, and filling genuine gaps revealed by the conversations.");
 promptBuilder.AppendLine();
-promptBuilder.AppendLine("Please provide specific, actionable recommendations.");
+promptBuilder.AppendLine("STRICT CONSTRAINTS — you MUST NOT suggest anything that:");
+promptBuilder.AppendLine("- Changes the bot's core purpose, workflow, or business logic");
+promptBuilder.AppendLine("- Modifies, replaces, or removes any hardcoded value (chat IDs, group IDs, user IDs, phone numbers, etc.)");
+promptBuilder.AppendLine("- Alters or reformats any JSON structure, response template, or example payload already present in the file");
+promptBuilder.AppendLine("- Introduces new features, commands, or behaviors not already implied by the existing instructions");
+promptBuilder.AppendLine("- Removes or contradicts any existing rule, even if you think it could be improved by replacement");
+promptBuilder.AppendLine("- Changes the language, tone policy, or any explicitly stated restriction");
+promptBuilder.AppendLine();
+promptBuilder.AppendLine("ALLOWED improvements:");
+promptBuilder.AppendLine("- Adding a missing clarification that prevents the AI from misinterpreting an existing rule");
+promptBuilder.AppendLine("- Rephrasing an ambiguous sentence into a clearer equivalent (same meaning, better words)");
+promptBuilder.AppendLine("- Adding an explicit note about an edge case that frequently confuses users (as seen in the chat messages)");
+promptBuilder.AppendLine("- Improving section headings or formatting so the AI can navigate the file more easily");
+promptBuilder.AppendLine();
+promptBuilder.AppendLine("For each improvement item provide:");
+promptBuilder.AppendLine("- A short title");
+promptBuilder.AppendLine("- A description of what gap or ambiguity it addresses");
+promptBuilder.AppendLine("- A score from 0 to 100 indicating how much this item improves AI-agent clarity");
+promptBuilder.AppendLine("  (100 = critical — the agent frequently misunderstands this, 50 = moderate benefit, 0 = negligible)");
+promptBuilder.AppendLine("- The exact markdown content to append to the instruction file (additive only — no deletions)");
+promptBuilder.AppendLine();
+promptBuilder.AppendLine("You MUST respond ONLY with a valid JSON array. Do not include any text outside the JSON.");
+promptBuilder.AppendLine("Use this exact format:");
+promptBuilder.AppendLine("[");
+promptBuilder.AppendLine("  {");
+promptBuilder.AppendLine("    \"title\": \"Short title of the improvement\",");
+promptBuilder.AppendLine("    \"description\": \"Why this improves the instruction file\",");
+promptBuilder.AppendLine("    \"score\": 85,");
+promptBuilder.AppendLine("    \"content\": \"The exact markdown section to add to the instruction file\"");
+promptBuilder.AppendLine("  }");
+promptBuilder.AppendLine("]");
 promptBuilder.AppendLine();
 promptBuilder.AppendLine("=== CHAT MESSAGES ===");
 promptBuilder.AppendLine();
@@ -110,16 +140,16 @@ promptBuilder.AppendLine(instructionContent);
 promptBuilder.AppendLine();
 promptBuilder.AppendLine("=== END OF INPUT ===");
 promptBuilder.AppendLine();
-promptBuilder.AppendLine("Based on the above chat messages and instruction file, please provide your analysis and recommendations:");
+promptBuilder.AppendLine("Now return the JSON array of improvement items:");
 
 var analysisPrompt = promptBuilder.ToString();
 
 // Initialize AI client
 Console.WriteLine("Initializing AI client...");
-var chatClient = new ChatClient("gpt-4.1",
-            new ApiKeyCredential(""),
-            new OpenAIClientOptions { Endpoint = new Uri("https://models.github.ai/inference") })
-            ;
+var chatClient = new ChatClient(model,
+    new ApiKeyCredential(apiKey),
+    new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
+
 // Send request to LLM
 Console.WriteLine("Sending analysis request to LLM (this may take a while)...");
 Console.WriteLine();
@@ -132,27 +162,120 @@ try
     };
 
     var response = await chatClient.CompleteChatAsync(chatMessages);
-    var recommendations = response.Value.Content[0].Text ?? "No response received.";
+    var rawResponse = response.Value.Content[0].Text ?? "[]";
 
-    // Save results to file
-    Console.WriteLine("Saving recommendations to file...");
-    var outputContent = new StringBuilder();
-    outputContent.AppendLine("=== INSTRUCTION ANALYSIS RECOMMENDATIONS ===");
-    outputContent.AppendLine($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-    outputContent.AppendLine($"Analyzed {messages.Count} chat messages");
-    outputContent.AppendLine();
-    outputContent.AppendLine(recommendations);
+    // Parse improvement items from JSON response
+    Console.WriteLine("Parsing improvement items...");
+    List<ImprovementItem> allItems;
+    try
+    {
+        // Strip markdown code fences if present
+        var jsonText = rawResponse.Trim();
+        if (jsonText.StartsWith("```"))
+        {
+            var start = jsonText.IndexOf('[');
+            var end = jsonText.LastIndexOf(']');
+            if (start >= 0 && end > start)
+                jsonText = jsonText[start..(end + 1)];
+        }
 
-    await File.WriteAllTextAsync(outputFilePath, outputContent.ToString());
+        allItems = JsonSerializer.Deserialize<List<ImprovementItem>>(jsonText,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"WARNING: Could not parse JSON response: {ex.Message}");
+        Console.WriteLine("Raw response:");
+        Console.WriteLine(rawResponse);
+        allItems = [];
+    }
 
-    Console.WriteLine($"SUCCESS! Recommendations saved to: {outputFilePath}");
+    Console.WriteLine($"Total improvement items identified: {allItems.Count}");
     Console.WriteLine();
-    Console.WriteLine("=== RECOMMENDATIONS PREVIEW ===");
-    Console.WriteLine(recommendations);
+
+    // Display all items with scores
+    Console.WriteLine("=== ALL IMPROVEMENT ITEMS ===");
+    foreach (var item in allItems.OrderByDescending(i => i.Score))
+    {
+        var status = item.Score > 50 ? "[WILL APPLY]" : "[SKIPPED   ]";
+        Console.WriteLine($"  {status} Score: {item.Score,3}/100 | {item.Title}");
+        Console.WriteLine($"             {item.Description}");
+        Console.WriteLine();
+    }
+
+    // Filter items with score > 50
+    var itemsToApply = allItems.Where(i => i.Score > 50).OrderByDescending(i => i.Score).ToList();
+
+    if (itemsToApply.Count == 0)
+    {
+        Console.WriteLine("No improvement items scored above 50. The instruction file will NOT be modified.");
+        Console.WriteLine();
+    }
+    else
+    {
+        Console.WriteLine($"Applying {itemsToApply.Count} improvement item(s) with score > 50...");
+        Console.WriteLine();
+
+        // Save history of the current instruction file before modifying
+        Directory.CreateDirectory(historyDirectory);
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+        var instructionFileName = Path.GetFileNameWithoutExtension(instructionFilePath);
+        var instructionFileExt = Path.GetExtension(instructionFilePath);
+        var historyFilePath = Path.Combine(historyDirectory, $"{instructionFileName}_{timestamp}{instructionFileExt}");
+
+        await File.WriteAllTextAsync(historyFilePath, instructionContent);
+        Console.WriteLine($"History saved: {historyFilePath}");
+
+        // Build updated instruction content
+        var updatedContent = new StringBuilder(instructionContent);
+        updatedContent.AppendLine();
+        updatedContent.AppendLine("---");
+        updatedContent.AppendLine();
+        updatedContent.AppendLine($"<!-- Auto-generated improvements applied on {DateTime.Now:yyyy-MM-dd HH:mm:ss} -->");
+        updatedContent.AppendLine();
+
+        foreach (var item in itemsToApply)
+        {
+            Console.WriteLine($"  Applying (score {item.Score}): {item.Title}");
+            updatedContent.AppendLine(item.Content);
+            updatedContent.AppendLine();
+        }
+
+        // Overwrite the instruction file with improved content
+        await File.WriteAllTextAsync(instructionFilePath, updatedContent.ToString());
+        Console.WriteLine();
+        Console.WriteLine($"SUCCESS! Instruction file updated: {instructionFilePath}");
+        Console.WriteLine($"Applied {itemsToApply.Count} improvement(s).");
+
+        // Also save a run log for reference
+        var runLogPath = Path.Combine(historyDirectory, $"run-log_{timestamp}.txt");
+        var logContent = new StringBuilder();
+        logContent.AppendLine("=== INSTRUCTION ANALYZER RUN LOG ===");
+        logContent.AppendLine($"Run time   : {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        logContent.AppendLine($"Messages   : {messages.Count} analyzed");
+        logContent.AppendLine($"Items found: {allItems.Count} total, {itemsToApply.Count} applied");
+        logContent.AppendLine();
+        logContent.AppendLine("=== ITEMS APPLIED (score > 50) ===");
+        foreach (var item in itemsToApply)
+        {
+            logContent.AppendLine($"  [{item.Score}/100] {item.Title}");
+            logContent.AppendLine($"  Reason: {item.Description}");
+            logContent.AppendLine();
+        }
+        logContent.AppendLine("=== ITEMS SKIPPED (score <= 50) ===");
+        foreach (var item in allItems.Where(i => i.Score <= 50).OrderByDescending(i => i.Score))
+        {
+            logContent.AppendLine($"  [{item.Score}/100] {item.Title}");
+            logContent.AppendLine($"  Reason: {item.Description}");
+            logContent.AppendLine();
+        }
+        await File.WriteAllTextAsync(runLogPath, logContent.ToString());
+        Console.WriteLine($"Run log saved: {runLogPath}");
+    }
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"ERROR: Failed to get recommendations from LLM: {ex.Message}");
+    Console.WriteLine($"ERROR: Failed to get analysis from LLM: {ex.Message}");
     Console.WriteLine($"Stack trace: {ex.StackTrace}");
     return;
 }
@@ -160,3 +283,19 @@ catch (Exception ex)
 Console.WriteLine();
 Console.WriteLine("Analysis complete!");
 Console.ReadKey();
+
+/// <summary>Represents a single improvement item returned by the AI.</summary>
+internal sealed class ImprovementItem
+{
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("score")]
+    public int Score { get; set; }
+
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = string.Empty;
+}
