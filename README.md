@@ -1,246 +1,98 @@
-# PineSms – سیستم مدیریت پیامک
+# PineAI.BaleBot
 
-سیستم مدیریت پیامک فارسی برای ارسال پیامک انبوه به مشتریان
+## فارسی
+
+`PineAI.BaleBot` یک **Worker Service مبتنی بر .NET 10** برای پیام‌رسان **بله** است که به‌عنوان هسته پشتیبانی هوشمند مزون **اناناس کالکشن** عمل می‌کند. این سرویس پیام‌های ورودی مشتریان را به‌صورت long-polling از Bale API دریافت می‌کند، آن‌ها را با استفاده از مدل‌های AI پردازش می‌کند، پاسخ نهایی را به کاربر برمی‌گرداند و در صورت نیاز، درخواست را به چت‌های پشتیبانی انسانی ارجاع می‌دهد.
+
+از نظر فنی، ربات دارای معماری سرویس‌محور و چندبخشی است:
+
+- دریافت و ارسال پیام از طریق `BaleBotClient`
+- پردازش اصلی هر آپدیت در `BotUpdateHandler`
+- نگه‌داری session مکالمه برای هر کاربر در `ChatSessionStore`
+- پشتیبانی از دو ارائه‌دهنده AI از طریق `IChatAgentService`:
+  - **GitHub Models**
+  - **ArvanCloud OpenAI-compatible API**
+- استخراج بلاک‌های ساختاریافته از پاسخ AI برای:
+  - `<<ORDER_CODE>>` جهت استعلام سفارش از دیتابیس
+  - `<<FEEDBACK>>` جهت ارجاع خودکار به تیم پشتیبانی
+- ذخیره پیام‌ها در پایگاه داده با صف غیرهمزمان `BotChatMessageQueue`
+- پشتیبانی از **SQL Server** و **SQLite** برای اجرا در محیط‌های مختلف
+
+### قابلیت‌های اصلی
+
+- پردازش پیام‌های متنی، کپشن و تصاویر
+- جست‌وجوی وضعیت سفارش و کد رهگیری از دیتابیس
+- فوروارد خودکار عکس‌ها برای سناریوهایی مثل کالای معیوب
+- ارجاع خودکار موارد خارج از پاسخ‌گویی ربات به **۱۱ چت پشتیبانی از پیش تعریف‌شده**
+- بارگذاری فایل‌های دستورالعمل ربات از پوشه `Chat/`
+- ثبت و نگه‌داری تاریخچه گفتگوها برای تحلیل و پیگیری
+
+### مدل پردازش همزمان
+
+برای جلوگیری از تداخل پاسخ‌ها و در عین حال حفظ throughput مناسب، `BaleBotWorker` از یک طراحی **dual-semaphore** استفاده می‌کند:
+
+- یک semaphore سراسری برای محدود کردن تعداد کل آپدیت‌های همزمان
+- یک semaphore مجزا برای هر کاربر جهت حفظ ترتیب پیام‌های همان کاربر
+
+این طراحی باعث می‌شود پیام‌های کاربران مختلف همزمان پردازش شوند، اما پیام‌های یک کاربر هرگز با هم قاطی نشوند.
 
 ---
 
-## معرفی
+## English
 
-**PineSms** یک سیستم مدیریت پیامک است که با معماری Clean Architecture در .NET 10 پیاده‌سازی شده است. این سیستم شامل یک API (ASP.NET Core Web API) و یک رابط کاربری (Blazor Server) می‌باشد که به صورت پاسخگو (Responsive) و با رابط کاربری فارسی طراحی شده است.
+`PineAI.BaleBot` is a **.NET 10 Worker Service** for **Bale Messenger** that acts as the AI-powered support backend for **Ananas Collection Boutique**. It continuously polls the Bale Bot API, processes incoming customer messages through AI providers, builds structured replies, performs order lookups against the database, and escalates unresolved cases to human support chats when required.
 
----
+Technically, the bot is built around a service-oriented processing pipeline:
 
-## ساختار پروژه
+- `BaleBotClient` wraps Bale API operations such as `getUpdates`, `sendMessage`, and `forwardMessage`
+- `BotUpdateHandler` orchestrates update processing, reply composition, escalation, and persistence
+- `ChatSessionStore` maintains per-user conversation state
+- `IChatAgentService` abstracts multiple AI backends:
+  - **GitHub Models**
+  - **ArvanCloud OpenAI-compatible API**
+- AI responses may emit structured blocks:
+  - `<<ORDER_CODE>>` for live order-status and tracking lookup
+  - `<<FEEDBACK>>` for escalation routing
+- `BotChatMessageQueue` and background saver workers persist conversations asynchronously
+- Database access supports both **SQL Server** and **SQLite**
 
-```
-PineSms/
-├── PineSms.Core/                 # لایه دامین – موجودیت‌ها، قراردادها، DTOها
-├── PineSms.Persistence/          # لایه داده – EF Core، SQL Server، مخازن
-├── PineSms.Identity/             # احراز هویت – JWT، Identity، seed داده
-├── PineSms.Api/                  # REST API – کنترلرها
-├── PineSms.UI/                   # رابط کاربری – Blazor Server
-├── PineSms.BaleBot/              # سرویس ربات پیام‌رسان بله با قابلیت AI
-├── PineSms.InstructionAnalyzer/  # ابزار تحلیل و بهبود دستورالعمل‌های AI
-└── PineSms.slnx                  # فایل سولوشن
-```
+### Core Behaviors
 
----
+- Long-polling update consumption from Bale
+- AI-assisted Persian-language customer support
+- Database-backed order resolution
+- Automatic forwarding of user photos for defective-product workflows
+- Routing of unresolved or business-specific cases to **11 predefined human support chats**
+- Instruction-driven behavior loaded from markdown files under `Chat/`
+- Concurrent update handling with per-user ordering guarantees
 
-## پیش‌نیازها
-
-- .NET 10 SDK
-- SQL Server (یا SQL Server Express)
-- Visual Studio 2022 یا VS Code
-
----
-
-## نصب و راه‌اندازی
-
-### ۱. کلون پروژه
+### Build
 
 ```bash
-git clone https://github.com/mirza-developer/pine-sms.git
-cd pine-sms
+dotnet build PineAI.slnx
 ```
 
-### ۲. تنظیم رشته اتصال دیتابیس
+### Technologies
 
-فایل `PineSms.Api/appsettings.json` را ویرایش کنید:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=PineSms;Trusted_Connection=True;TrustServerCertificate=True;",
-    "IdentityConnection": "Server=localhost;Database=PineSmsIdentity;Trusted_Connection=True;TrustServerCertificate=True;"
-  }
-}
-```
-
-### ۳. اجرای پروژه
-
-**API:**
-```bash
-cd PineSms.Api
-dotnet run
-```
-
-**UI:**
-```bash
-cd PineSms.UI
-dotnet run
-```
-
----
-
-## راهنمای استفاده
-
-### ورود به سیستم
-
-- آدرس: `http://localhost:5000` (UI)
-- نام کاربری: `admin`
-- رمز عبور: `Admin@123`
-
----
-
-## امکانات
-
-### ۱. ورود به سیستم
-
-سیستم دارای یک کاربر مدیر (`admin`) است که اطلاعات آن از طریق EF Core Seed Data در هنگام اجرای اول برنامه در دیتابیس ثبت می‌شود.
-
-### ۲. موجودیت مشتری (`Customer`)
-
-فیلدهای اجباری:
-- **شماره موبایل** (`PhoneNumber`): ۱۰ رقم، شروع با ۹ (بدون صفر ابتدایی) – مثال: `9903063085`
-- **تاریخ ثبت** (`SaveDate`): تاریخ و زمان ثبت (UTC)
-- **شناسه کاربر ثبت‌کننده** (`SaveUserId`)
-- **نوع ثبت** (`SaveType`): ۱=فرم، ۲=اکسل
-
-فیلدهای اختیاری:
-- نام (`Name`)
-- جنسیت (`Gender`): ۱=مرد، ۲=زن
-- سال تولد (`BirthYear`)
-- تاریخ تولد (`BirthDate`)
-- آخرین تاریخ استفاده (`LastUsageDate`)
-
-### ۳. افزودن مشتری از طریق فرم
-
-صفحه «افزودن مشتری» (`/customer/add`) یک فرم با اعتبارسنجی کامل دارد:
-- بررسی فرمت شماره موبایل (۱۰ رقم، شروع با ۹)
-- بررسی تکراری بودن شماره
-- نمایش پیام خطا در صورت عدم اعتبار
-- تاریخ تولد با انتخابگر تاریخ شمسی (PersianDatePicker)
-
-### ۴. وارد کردن مشتریان از فایل اکسل
-
-صفحه «ورود از اکسل» (`/customer/import`):
-- فایل Excel با یک ستون، ردیف اول عنوان ستون (نادیده گرفته می‌شود)
-- شماره‌ها باید ۱۰ رقم، شروع با ۹ باشند
-- **مدیریت خطاها:**
-  - شماره‌های نامعتبر (فرمت اشتباه) نمایش داده می‌شوند
-  - شماره‌های تکراری (موجود در سیستم) نمایش داده می‌شوند
-  - پس از نمایش خطاها، کاربر می‌تواند «نادیده گرفتن و ثبت بقیه» را انتخاب کند
-  - برای شماره‌های تکراری: فقط `LastUsageDate` به‌روز می‌شود (ثبت مجدد نمی‌شوند)
-  - شماره‌های معتبر و غیرتکراری در دیتابیس ثبت می‌شوند
-
-### ۵. ارسال پیامک
-
-صفحه «ارسال پیامک» (`/sms/send`):
-
-**انتخاب بازه زمانی:**
-- یک هفته اخیر
-- دو هفته اخیر
-- یک ماه اخیر
-- یک فصل اخیر (سه ماه)
-- یک سال اخیر
-- بازه سفارشی (از تاریخ ... تا تاریخ ...)
-
-**جدول مشتریان:**
-- پس از جستجو، لیست مشتریان در جدول نمایش داده می‌شود
-- همه ردیف‌ها به صورت پیش‌فرض انتخاب شده‌اند
-- checkbox در هدر جدول برای انتخاب/لغو انتخاب همه ردیف‌ها
-- می‌توان روی ردیف کلیک کرد یا checkbox را تغییر داد
-
-**ارسال پیامک:**
-- شماره فرستنده (از پنل ملی پیامک)
-- متن پیامک
-- دکمه ارسال نمایش می‌دهد به چند نفر ارسال می‌شود
-- ارسال از طریق API ملی پیامک (MeliPayamak)
-- لاگ ارسال با آرایه JSON از شماره‌ها و نتایج در دیتابیس ذخیره می‌شود
-
-### ۶. کامپوننت PersianDatePicker
-
-یک انتخابگر تاریخ شمسی کاملاً فارسی:
-- نمایش تقویم شمسی با نام ماه‌های فارسی
-- ناوبری ماهانه
-- نمایش امروز (highlighted)
-- نمایش تاریخ انتخاب‌شده
-
-### ۷. سیستم اعلان‌ها (Notifications)
-
-کامپوننت NotificationContainer برای نمایش پیام‌های موفقیت، خطا، هشدار و اطلاعات:
-- موقعیت: گوشه بالا سمت راست
-- حذف خودکار پس از ۵ ثانیه
-- قابلیت بستن دستی
-
----
-
-## معماری
-
-### لایه Core (`PineSms.Core`)
-- موجودیت‌ها: `Customer`, `SmsLog`, `IBaseEntity`
-- قراردادها: `IAuthService`, `ICustomerService`, `ISmsService`
-- DTOها: `GetUserLoginQuery/Result`, `InsertCustomerCommand`, `ImportCustomersCommand/Result`, `SendSmsCommand/Result`
-
-### لایه Persistence (`PineSms.Persistence`)
-- `PineSmsDbContext`: EF Core DbContext با auto-migration
-- `CustomerRepository`: پیاده‌سازی `ICustomerService`
-- `SmsRepository`: پیاده‌سازی `ISmsService` با HttpClient برای MeliPayamak
-
-### لایه Identity (`PineSms.Identity`)
-- `PineSmsIdentityContext`: Identity DbContext با seed داده برای admin
-- `AuthService`: احراز هویت با JWT و SHA256 password hashing
-- `ApplicationUser`: کاربر با فیلد `PersianName`
-- Migrations برای ایجاد جدول‌های Identity
-
-### لایه API (`PineSms.Api`)
-- `AuthController`: POST `/api/auth/login`
-- `CustomerController`: POST/GET `/api/customer`
-- `SmsController`: POST `/api/sms/send`
-
-### لایه UI (`PineSms.UI`)
-- Blazor Server با رابط کاربری RTL (راست به چپ)
-- صفحات: Login، Home، CustomerAdd، CustomerImport، SmsSend
-- کامپوننت‌ها: PersianDatePicker، NotificationContainer
-- Bootstrap RTL برای طراحی واکنش‌گرا
-
----
-
-## API Documentation
-
-### POST `/api/auth/login`
-```json
-{ "username": "admin", "password": "Admin@123" }
-```
-Response:
-```json
-{ "success": true, "token": "eyJ..." }
-```
-
-### POST `/api/customer`
-```json
-{ "phoneNumber": "9903063085", "name": "نام", "gender": 1, "birthYear": 1370, "birthDate": "1370/01/01" }
-```
-
-### POST `/api/customer/import`
-```json
-{ "phoneNumbers": ["9903063085", "9123456789"], "ignoreInvalid": false }
-```
-
-### GET `/api/customer/byrange?from=2024-01-01&to=2024-12-31`
-
-### POST `/api/sms/send`
-```json
-{
-  "customerIds": [1, 2, 3],
-  "messageText": "متن پیامک",
-  "fromNumber": "5000xxx",
-  "dateRangeType": "LastMonth"
-}
-```
-
----
-
-## تکنولوژی‌های استفاده‌شده
-
-| تکنولوژی | نسخه | کاربرد |
+| Technology | Version | Usage |
 |---|---|---|
-| .NET | 10.0 | فریمورک اصلی |
-| ASP.NET Core Web API | 10.0 | REST API |
-| Blazor Server | 10.0 | رابط کاربری |
-| Entity Framework Core | 10.0 | ORM |
-| SQL Server | - | دیتابیس |
-| ASP.NET Identity | 10.0 | مدیریت کاربران |
-| JWT Bearer | 10.0 | احراز هویت |
-| EPPlus | 7.7.0 | خواندن فایل Excel |
-| Bootstrap | 5.x RTL | طراحی واکنش‌گرا |
+| .NET | 10.0 | Main runtime and worker host |
+| Worker Service | .NET 10 | Background Bale bot service |
+| Bale Bot API | - | Messaging transport |
+| Entity Framework Core | 10.0 | Data access |
+| SQL Server | - | Primary relational database option |
+| SQLite | - | Lightweight/local database option |
+| Microsoft.Extensions.AI | 10.3.0 | AI integration abstraction |
+| OpenAI SDK | 2.8.0 | AI provider client integration |
+| Microsoft.Agents.AI | 1.0.0-preview.260212.1 | Agent-oriented AI support |
+| Serilog | 10.x | Structured logging |
+| Seq | 9.0.0 sink | Centralized log sink |
+
+### Related Projects in the Solution
+
+- `PineAI.BaleBot` — Bale chatbot worker
+- `PineAI.Persistence` — EF Core persistence layer
+- `PineAI.Core` — shared domain/contracts
+- `PineAI.Api` — API layer
+- `PineAI.UI` — UI layer
+- `PineAI.Identity` — authentication and identity services

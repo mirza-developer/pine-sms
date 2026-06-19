@@ -1,12 +1,12 @@
-# PineSms — Order Notification API
+# PineAI — Order Notification API
 
-This document explains how an external application can connect to the PineSms API to notify it of new or updated customer orders.
+This document explains how an external application can connect to the PineAI API to notify it of new or updated customer orders.
 
 ---
 
 ## Overview
 
-The **Order Notification endpoint** allows any external system (e.g. an e-commerce store, ERP, or logistics platform) to push order status updates into PineSms. When an update arrives, PineSms will:
+The **Order Notification endpoint** allows any external system (e.g. an e-commerce store, ERP, or logistics platform) to push order status updates into PineAI. When an update arrives, PineAI will:
 
 1. Register the customer (phone number) if they are not already in the database.
 2. Look up the order status by its code.
@@ -21,7 +21,7 @@ This endpoint is protected by **API key authentication**, not by the JWT tokens 
 
 ### How to obtain an API key
 
-1. Log in to the PineSms admin panel (UI).
+1. Log in to the PineAI admin panel (UI).
 2. Navigate to **تنظیمات → کلیدهای API** (Settings → API Keys).
 3. Click **ایجاد کلید جدید** (Create New Key), enter a descriptive name and an expiry date, then click **ایجاد کلید**.
 4. **Copy the generated key immediately** — it is only shown once and cannot be recovered later.
@@ -43,7 +43,7 @@ Requests without a valid, non-expired key will receive `401 Unauthorized`.
 
 ### `POST /api/order/notify`
 
-Notifies PineSms of a new or updated customer order.
+Notifies PineAI of a new or updated customer order.
 
 #### Request headers
 
@@ -58,9 +58,9 @@ Notifies PineSms of a new or updated customer order.
 |-------|------|----------|-------------|
 | `customerPhoneNumber` | `string` | ✅ | Customer's mobile number — **10 digits, starting with `9`**, without the leading zero (e.g. `9123456789`) |
 | `orderCode` | `string` | ✅ | Your unique identifier for the order (e.g. `ORD-20260428-001`). Max 128 characters. |
-| `orderStatusCode` | `string` | ✅ | The code of an **existing** order status defined in PineSms (e.g. `SHIPPED`). Max 64 characters. |
+| `orderStatusCode` | `string` | ✅ | The code of an **existing** order status defined in PineAI (e.g. `SHIPPED`). Max 64 characters. |
 
-> **Important:** Order status codes must first be created in the PineSms admin panel under **سفارشات → وضعیت‌های سفارش** before they can be referenced here.
+> **Important:** Order status codes must first be created in the PineAI admin panel under **سفارشات → وضعیت‌های سفارش** before they can be referenced here.
 
 #### Example request
 
@@ -100,7 +100,7 @@ X-Api-Key: abc123XYZ_your_actual_key_here
 
 | Status | Cause |
 |--------|-------|
-| `400 Bad Request` | The `orderStatusCode` does not match any status defined in PineSms, or required fields are missing/invalid |
+| `400 Bad Request` | The `orderStatusCode` does not match any status defined in PineAI, or required fields are missing/invalid |
 | `401 Unauthorized` | The `X-Api-Key` header is absent, the key is invalid, or the key has expired |
 
 **Example 400 body:**

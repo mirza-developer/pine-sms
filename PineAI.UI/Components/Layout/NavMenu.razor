@@ -1,0 +1,37 @@
+@using PineAI.UI.Services
+
+<nav class="nav-menu">
+    @if (AuthState.IsAuthenticated)
+    {
+        @foreach (var section in sections)
+        {
+            <div class="nav-section-label">@section</div>
+            @foreach (var link in menuLinks.Where(l => l.SectionLabel == section).OrderBy(l => l.DisplayOrder))
+            {
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="@link.Url.TrimStart('/')" Match="@(link.Url == "/" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                        <span class="bi @link.IconName nav-icon" aria-hidden="true"></span>
+                        <span class="nav-text">@link.Title</span>
+                    </NavLink>
+                </div>
+            }
+        }
+
+        @if (AuthState.IsAdmin)
+        {
+            <div class="nav-section-label">مدیریت</div>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="settings/users">
+                    <span class="bi bi-people-fill nav-icon" aria-hidden="true"></span>
+                    <span class="nav-text">مدیریت کاربران</span>
+                </NavLink>
+            </div>
+            <div class="nav-item">
+                <NavLink class="nav-link" href="settings/menu-access">
+                    <span class="bi bi-shield-lock-fill nav-icon" aria-hidden="true"></span>
+                    <span class="nav-text">دسترسی منو</span>
+                </NavLink>
+            </div>
+        }
+    }
+</nav>
