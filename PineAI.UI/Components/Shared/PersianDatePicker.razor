@@ -1,0 +1,85 @@
+@namespace PineAI.UI.Components.Shared
+
+<div class="persian-datepicker @(isOpen ? "open" : "")">
+    <div class="persian-datepicker-input" @onclick="ToggleCalendar">
+        <input type="text"
+               class="form-control"
+               value="@Value"
+               placeholder="انتخاب تاریخ"
+               readonly="readonly" />
+        <span class="persian-datepicker-icon">📅</span>
+    </div>
+
+    @if (isOpen)
+    {
+        <div class="persian-datepicker-popup" @onclick:stopPropagation="true">
+            <div class="datepicker-header">
+                <button type="button" class="btn btn-sm btn-link" @onclick="NavigatePrev">❯</button>
+                @if (currentMode == DatePickerMode.Days)
+                {
+                    <span class="datepicker-title">
+                        <span class="datepicker-nav-link" @onclick="SwitchToMonths">@PersianMonthNames[currentMonth - 1]</span>
+                        &nbsp;
+                        <span class="datepicker-nav-link" @onclick="SwitchToYears">@currentYear</span>
+                    </span>
+                }
+                else if (currentMode == DatePickerMode.Months)
+                {
+                    <span class="datepicker-title">
+                        <span class="datepicker-nav-link" @onclick="SwitchToYears">@currentYear</span>
+                    </span>
+                }
+                else
+                {
+                    <span class="datepicker-title">@yearsViewStart – @(yearsViewStart + 11)</span>
+                }
+                <button type="button" class="btn btn-sm btn-link" @onclick="NavigateNext">❮</button>
+            </div>
+
+            @if (currentMode == DatePickerMode.Days)
+            {
+                <div class="datepicker-weekdays">
+                    @foreach (var day in DayNames)
+                    {
+                        <div class="weekday">@day</div>
+                    }
+                </div>
+                <div class="datepicker-grid">
+                    @foreach (var cell in calendarCells)
+                    {
+                        <div class="datepicker-cell @GetCellClass(cell)"
+                             @onclick="() => SelectDate(cell)">
+                            @cell.Day
+                        </div>
+                    }
+                </div>
+            }
+            else if (currentMode == DatePickerMode.Months)
+            {
+                <div class="datepicker-months-grid">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        var month = m;
+                        <div class="datepicker-month-cell @GetMonthClass(month)" @onclick="() => SelectMonth(month)">
+                            @PersianMonthNames[month - 1]
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="datepicker-years-grid">
+                    @for (int i = 0; i < 12; i++)
+                    {
+                        var year = yearsViewStart + i;
+                        <div class="datepicker-year-cell @GetYearClass(year)" @onclick="() => SelectYear(year)">
+                            @year
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="datepicker-overlay" @onclick="CloseCalendar"></div>
+    }
+</div>
+

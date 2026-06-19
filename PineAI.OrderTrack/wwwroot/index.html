@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>پیگیری سفارش</title>
+    <base href="/" />
+    <link rel="preload"
+          href="fonts/Vazirmatn.woff2"
+          as="font"
+          type="font/woff2"
+          crossorigin />
+    <link rel="stylesheet" href="css/app.min.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="PineAI.OrderTrack.styles.css" rel="stylesheet" />
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="app-loading">
+            <div class="spinner"></div>
+            <p>در حال بارگذاری...</p>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        خطایی رخ داده است.
+        <a href="." class="reload">بارگذاری مجدد</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('service-worker.js').catch(console.error); }</script>
+</body>
+
+</html>

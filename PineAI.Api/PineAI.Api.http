@@ -1,0 +1,6 @@
+@PineAI.Api_HostAddress = http://localhost:5161
+
+GET {{PineAI.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
