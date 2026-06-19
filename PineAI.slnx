@@ -19,6 +19,7 @@
     <Project Path="PineAI.BaleBot/PineAI.BaleBot.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/Web/">
+    <Project Path="PineAI.Landing/PineAI.Landing.csproj" />
     <Project Path="PineAI.OrderTrack/PineAI.OrderTrack.csproj" />
     <Project Path="PineAI.UI/PineAI.UI.csproj" />
   </Folder>
