@@ -1,0 +1,89 @@
+@inherits LayoutComponentBase
+@inject SiteSettings Site
+
+<header class="site-header" role="banner">
+    <div class="container header-inner">
+        <a href="/" class="site-logo-link" aria-label="@Site.Name - صفحه اصلی">
+            <span class="logo-icon" aria-hidden="true">
+                <svg viewBox="0 0 36 36" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="36" height="36" rx="8" fill="#1A5C3A"/>
+                    <path d="M18 6 L24 14 L30 10 L26 22 L18 30 L10 22 L6 10 L12 14 Z" fill="#52B788" opacity=".9"/>
+                    <circle cx="18" cy="18" r="4" fill="white"/>
+                </svg>
+            </span>
+            <span class="logo-text">@Site.NameEn</span>
+        </a>
+
+        <nav class="header-nav" role="navigation" aria-label="منوی اصلی">
+            <ul>
+                <li><a href="#features">امکانات</a></li>
+                <li><a href="#how-it-works">نحوه کار</a></li>
+                <li><a href="#contact" class="nav-cta">درخواست دمو</a></li>
+            </ul>
+        </nav>
+
+        <button class="nav-toggle" aria-label="باز کردن منو" @onclick="ToggleNav">
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                <path stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                      d="@(navOpen ? "M6 6l12 12M6 18L18 6" : "M4 7h16M4 12h16M4 17h16")" />
+            </svg>
+        </button>
+    </div>
+
+    <nav class="mobile-nav @(navOpen ? "is-open" : "")" aria-label="منوی موبایل">
+        <ul>
+            <li><a href="#features" @onclick="CloseNav">امکانات</a></li>
+            <li><a href="#how-it-works" @onclick="CloseNav">نحوه کار</a></li>
+            <li><a href="#contact" @onclick="CloseNav" class="nav-cta">درخواست دمو</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main>
+    @Body
+</main>
+
+<footer class="site-footer" role="contentinfo">
+    <div class="container footer-inner">
+        <div class="footer-brand">
+            <span class="footer-logo-text">@Site.NameEn</span>
+            <p class="footer-tagline">@Site.Tagline</p>
+        </div>
+        <div class="footer-links">
+            <h3>امکانات</h3>
+            <ul>
+                <li><a href="#features">پیامک هوشمند</a></li>
+                <li><a href="#features">پشتیبانی AI</a></li>
+                <li><a href="#features">رهگیری سفارش</a></li>
+            </ul>
+        </div>
+        <div class="footer-contact">
+            <h3>تماس با ما</h3>
+            <ul>
+                @if (!string.IsNullOrEmpty(Site.BaleUrl))
+                {
+                    <li><a href="@Site.BaleUrl" target="_blank" rel="noopener">پیام‌رسان بله</a></li>
+                }
+                @if (!string.IsNullOrEmpty(Site.InstagramUrl))
+                {
+                    <li><a href="@Site.InstagramUrl" target="_blank" rel="noopener">اینستاگرام</a></li>
+                }
+                @if (!string.IsNullOrEmpty(Site.Email))
+                {
+                    <li><a href="mailto:@Site.Email">@Site.Email</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <div class="container">
+            <p>© @DateTime.Now.Year @Site.NameEn — تمام حقوق محفوظ است.</p>
+        </div>
+    </div>
+</footer>
+
+@code {
+    private bool navOpen = false;
+    private void ToggleNav() => navOpen = !navOpen;
+    private void CloseNav() => navOpen = false;
+}

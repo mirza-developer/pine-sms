@@ -1,0 +1,484 @@
+@page "/"
+@inject SiteSettings Site
+@inject ContactService ContactSvc
+
+<PageTitle>@Site.Name | پلتفرم هوشمند مدیریت مشتریان برای فروشگاه‌های آنلاین</PageTitle>
+
+<HeadContent>
+    <meta name="description" content="پاین‌ای یک پلتفرم هوشمند مدیریت مشتریان برای فروشگاه‌های آنلاین است. پیامک انبوه، ربات پشتیبانی هوشمند بله با هوش مصنوعی، و سیستم رهگیری سفارش در یک بستر یکپارچه." />
+    <meta name="keywords" content="مدیریت مشتریان, پیامک تبلیغاتی, ربات بله, پشتیبانی هوشمند, رهگیری سفارش, CRM فروشگاه آنلاین, هوش مصنوعی, پاین ای" />
+    <meta property="og:title" content="پاین‌ای | پلتفرم هوشمند مدیریت مشتریان" />
+    <meta property="og:description" content="پیامک هوشمند، پشتیبانی AI با ربات بله و سیستم رهگیری سفارش برای فروشگاه آنلاین شما." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="@Site.Domain" />
+    <meta property="og:locale" content="fa_IR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="پاین‌ای | PineAI" />
+    <meta name="twitter:description" content="پلتفرم هوشمند مدیریت مشتریان، پیامک و پشتیبانی AI برای فروشگاه‌های آنلاین ایران." />
+    <link rel="canonical" href="@Site.Domain" />
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org",
+      "@@type": "SoftwareApplication",
+      "name": "PineAI",
+      "alternateName": "پاین‌ای",
+      "url": "@Site.Domain",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "پلتفرم هوشمند مدیریت مشتریان برای فروشگاه‌های آنلاین: پیامک انبوه، ربات پشتیبانی هوشمند بله، و سیستم رهگیری سفارش.",
+      "offers": {
+        "@@type": "Offer",
+        "priceCurrency": "IRR",
+        "availability": "https://schema.org/InStock"
+      },
+      "provider": {
+        "@@type": "Organization",
+        "name": "PineAI",
+        "url": "@Site.Domain"
+      },
+      "featureList": [
+        "ارسال پیامک انبوه",
+        "ربات پشتیبانی هوشمند بله با هوش مصنوعی",
+        "سیستم رهگیری سفارش",
+        "مدیریت مشتریان",
+        "تحلیل و گزارش‌گیری"
+      ]
+    }
+    </script>
+</HeadContent>
+
+<!-- ═══════════════════════════════ HERO ════════════════════════════════ -->
+<section class="hero" aria-labelledby="hero-title">
+    <div class="container hero-inner">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-dot" aria-hidden="true"></span>
+                ویژه فروشگاه‌های آنلاین
+            </div>
+            <h1 id="hero-title" class="hero-title">
+                مدیریت هوشمند مشتریان<br />
+                <span class="hero-title-accent">در یک پلتفرم یکپارچه</span>
+            </h1>
+            <p class="hero-desc">
+                پاین‌ای به فروشگاه‌های آنلاین کمک می‌کند تا با پیامک هوشمند، ربات پشتیبانی AI در بله،
+                و سیستم رهگیری سفارش، تجربه‌ای متمایز برای مشتریان خود بسازند.
+            </p>
+            <div class="hero-actions">
+                <a href="#contact" class="btn btn-primary">درخواست دمو رایگان</a>
+                <a href="#features" class="btn btn-ghost">بیشتر بدانید</a>
+            </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+            <div class="hero-card">
+                <div class="hero-card-header">
+                    <span class="hc-dot hc-dot-r"></span>
+                    <span class="hc-dot hc-dot-y"></span>
+                    <span class="hc-dot hc-dot-g"></span>
+                    <span class="hc-label">پشتیبانی هوشمند</span>
+                </div>
+                <div class="hero-chat">
+                    <div class="chat-bubble customer">سلام، سفارشم کِی می‌رسه؟</div>
+                    <div class="chat-bubble bot">
+                        <span class="bot-tag">AI</span>
+                        سلام! کد سفارش شما رو بنویسید تا وضعیت را بررسی کنم.
+                    </div>
+                    <div class="chat-bubble customer">۱۲۳۴۵</div>
+                    <div class="chat-bubble bot">
+                        <span class="bot-tag">AI</span>
+                        سفارش شما ارسال شده و کد رهگیری: <strong dir="ltr">1234567890</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════ STATS ════════════════════════════════ -->
+<section class="stats-bar" aria-label="آمار و ارقام">
+    <div class="container stats-inner">
+        <div class="stat-item">
+            <span class="stat-num">۲۴/۷</span>
+            <span class="stat-label">پشتیبانی خودکار</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+            <span class="stat-num">۳</span>
+            <span class="stat-label">ابزار در یک پلتفرم</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+            <span class="stat-num">AI</span>
+            <span class="stat-label">پشتیبانی با هوش مصنوعی</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+            <span class="stat-num">بله</span>
+            <span class="stat-label">پیام‌رسان ایرانی</span>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════ FEATURES ════════════════════════════════ -->
+<section class="features section" id="features" aria-labelledby="features-title">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">امکانات</span>
+            <h2 id="features-title">همه‌چیز برای رشد فروشگاه شما</h2>
+            <p class="section-desc">
+                سه ابزار قدرتمند که با هم کار می‌کنند تا ارتباط شما با مشتریان را حرفه‌ای کنند.
+            </p>
+        </div>
+
+        <div class="features-grid">
+            <article class="feature-card" aria-labelledby="feat-sms">
+                <div class="feature-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </div>
+                <h3 id="feat-sms">پیامک هوشمند</h3>
+                <p>
+                    لیست مشتریان خود را وارد کنید و کمپین‌های پیامکی هدفمند ارسال نمایید.
+                    مدیریت کامل مخاطبین، گزارش ارسال و پیگیری نتایج در یک پنل ساده.
+                </p>
+                <ul class="feature-list">
+                    <li>ارسال پیامک انبوه به هزاران مشتری</li>
+                    <li>مدیریت لیست مشتریان با ورود اطلاعات دستی یا اکسل</li>
+                    <li>گزارش و تحلیل نتایج کمپین</li>
+                </ul>
+            </article>
+
+            <article class="feature-card feature-card-accent" aria-labelledby="feat-ai">
+                <div class="feature-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5V12l3 3H5l3-3V9.5A4 4 0 0 1 12 2z"/>
+                        <path d="M9 17v2a3 3 0 0 0 6 0v-2"/>
+                    </svg>
+                </div>
+                <h3 id="feat-ai">ربات پشتیبانی هوشمند</h3>
+                <p>
+                    ربات بله با هوش مصنوعی به‌صورت ۲۴ ساعته پاسخ سوالات مشتریان را می‌دهد،
+                    وضعیت سفارش‌ها را بررسی می‌کند و در صورت نیاز، مکالمه را به پشتیبانی انسانی ارجاع می‌دهد.
+                </p>
+                <ul class="feature-list">
+                    <li>پاسخ‌گویی خودکار ۲۴/۷ بدون دخالت انسانی</li>
+                    <li>استعلام خودکار وضعیت سفارش از دیتابیس</li>
+                    <li>ارجاع هوشمند به پشتیبانی انسانی</li>
+                    <li>پشتیبانی از متن و تصویر</li>
+                </ul>
+                <span class="card-badge">محبوب‌ترین</span>
+            </article>
+
+            <article class="feature-card" aria-labelledby="feat-track">
+                <div class="feature-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                </div>
+                <h3 id="feat-track">سیستم رهگیری سفارش</h3>
+                <p>
+                    یک صفحه اختصاصی رهگیری سفارش برای مشتریان فروشگاه خود داشته باشید.
+                    مشتری با کد سفارش یا شماره موبایل، وضعیت و کد رهگیری پستی سفارشش را دریافت می‌کند.
+                </p>
+                <ul class="feature-list">
+                    <li>صفحه اختصاصی با برند و رنگ فروشگاه شما</li>
+                    <li>جستجو با کد سفارش، موبایل یا ایمیل</li>
+                    <li>نمایش کد رهگیری پستی با کپی سریع</li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════ HOW IT WORKS ════════════════════════════════ -->
+<section class="how-section section" id="how-it-works" aria-labelledby="how-title">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">نحوه کار</span>
+            <h2 id="how-title">راه‌اندازی سریع، نتیجه فوری</h2>
+            <p class="section-desc">در کمتر از ۴۸ ساعت فروشگاه شما به ابزارهای هوشمند مجهز می‌شود.</p>
+        </div>
+
+        <ol class="steps-list" aria-label="مراحل راه‌اندازی">
+            <li class="step-item">
+                <div class="step-num" aria-hidden="true">۱</div>
+                <div class="step-content">
+                    <h3>مشاوره و بررسی نیاز</h3>
+                    <p>با تیم پاین‌ای صحبت کنید. نیازهای کسب‌وکار شما را بررسی می‌کنیم و بهترین راهکار را پیشنهاد می‌دهیم.</p>
+                </div>
+            </li>
+            <li class="step-item">
+                <div class="step-num" aria-hidden="true">۲</div>
+                <div class="step-content">
+                    <h3>راه‌اندازی و سفارشی‌سازی</h3>
+                    <p>سیستم را با برند، رنگ و محتوای فروشگاه شما پیکربندی می‌کنیم. ربات بله با دستورالعمل‌های اختصاصی آماده می‌شود.</p>
+                </div>
+            </li>
+            <li class="step-item">
+                <div class="step-num" aria-hidden="true">۳</div>
+                <div class="step-content">
+                    <h3>وارد کردن مشتریان</h3>
+                    <p>لیست مشتریان فعلی خود را از اکسل وارد کنید. مشتریان جدید به‌صورت خودکار از طریق سفارش‌ها ثبت می‌شوند.</p>
+                </div>
+            </li>
+            <li class="step-item">
+                <div class="step-num" aria-hidden="true">۴</div>
+                <div class="step-content">
+                    <h3>شروع کار و رشد</h3>
+                    <p>پیامک ارسال کنید، ربات پاسخ‌گو باشد و مشتریان سفارش‌هایشان را پیگیری کنند. همه‌چیز خودکار است.</p>
+                </div>
+            </li>
+        </ol>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════ WHY ════════════════════════════════ -->
+<section class="why-section section" aria-labelledby="why-title">
+    <div class="container why-inner">
+        <div class="why-content">
+            <span class="section-tag">چرا پاین‌ای؟</span>
+            <h2 id="why-title">ساخته‌شده برای فروشگاه‌های آنلاین ایران</h2>
+            <ul class="why-list">
+                <li>
+                    <span class="why-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <span>کاملاً فارسی و راست‌به‌چپ، بدون نیاز به تنظیمات اضافه</span>
+                </li>
+                <li>
+                    <span class="why-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <span>یکپارچه با پیام‌رسان بله، پرکاربردترین پلتفرم ایرانی</span>
+                </li>
+                <li>
+                    <span class="why-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <span>پشتیبانی از هوش مصنوعی پیشرفته برای پاسخ‌گویی دقیق</span>
+                </li>
+                <li>
+                    <span class="why-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <span>راه‌اندازی سریع بدون نیاز به دانش فنی</span>
+                </li>
+                <li>
+                    <span class="why-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <span>پشتیبانی از SQL Server و SQLite برای انعطاف در زیرساخت</span>
+                </li>
+                <li>
+                    <span class="why-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <span>سفارشی‌سازی کامل رنگ، محتوا و دستورالعمل ربات</span>
+                </li>
+            </ul>
+        </div>
+        <div class="why-visual" aria-hidden="true">
+            <div class="why-card">
+                <div class="wc-header">پنل مدیریت</div>
+                <div class="wc-stat">
+                    <span class="wc-label">پیامک ارسال‌شده</span>
+                    <span class="wc-value">۱۲,۴۸۰</span>
+                </div>
+                <div class="wc-stat">
+                    <span class="wc-label">مشتریان فعال</span>
+                    <span class="wc-value">۳,۲۱۰</span>
+                </div>
+                <div class="wc-stat">
+                    <span class="wc-label">مکالمات ربات امروز</span>
+                    <span class="wc-value">۸۴</span>
+                </div>
+                <div class="wc-stat">
+                    <span class="wc-label">سفارشات پیگیری‌شده</span>
+                    <span class="wc-value">۲۳۱</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════ CONTACT ════════════════════════════════ -->
+<section class="contact-section section" id="contact" aria-labelledby="contact-title">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">تماس با ما</span>
+            <h2 id="contact-title">دمو رایگان درخواست کنید</h2>
+            <p class="section-desc">
+                اطلاعات خود را وارد کنید. تیم ما در اسرع وقت با شما تماس می‌گیرد.
+            </p>
+        </div>
+
+        <div class="contact-form-wrap">
+            @if (formSubmitted)
+            {
+                <div class="form-success" role="alert" aria-live="polite">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22,4 12,14.01 9,11.01"/>
+                    </svg>
+                    <h3>درخواست شما با موفقیت ثبت شد!</h3>
+                    <p>تیم پاین‌ای به‌زودی با شما تماس خواهد گرفت.</p>
+                    <button class="btn btn-ghost" @onclick="ResetForm">ثبت درخواست جدید</button>
+                </div>
+            }
+            else
+            {
+                <form class="contact-form" @onsubmit="SubmitForm" @onsubmit:preventDefault novalidate>
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="form-error" role="alert" aria-live="polite">@formError</div>
+                    }
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="contact-name">نام و نام‌خانوادگی <span class="required" aria-hidden="true">*</span></label>
+                            <input id="contact-name"
+                                   type="text"
+                                   class="form-input @(nameError ? "input-error" : "")"
+                                   placeholder="مثال: علی احمدی"
+                                   @bind="form.Name"
+                                   @bind:event="oninput"
+                                   maxlength="100"
+                                   autocomplete="name"
+                                   disabled="@isSubmitting" />
+                            @if (nameError)
+                            {
+                                <span class="field-error" role="alert">وارد کردن نام الزامی است.</span>
+                            }
+                        </div>
+
+                        <div class="form-group">
+                            <label for="contact-phone">شماره تلفن <span class="required" aria-hidden="true">*</span></label>
+                            <input id="contact-phone"
+                                   type="tel"
+                                   class="form-input @(phoneError ? "input-error" : "")"
+                                   placeholder="مثال: ۰۹۱۲۱۲۳۴۵۶۷"
+                                   @bind="form.Phone"
+                                   @bind:event="oninput"
+                                   maxlength="20"
+                                   autocomplete="tel"
+                                   dir="ltr"
+                                   disabled="@isSubmitting" />
+                            @if (phoneError)
+                            {
+                                <span class="field-error" role="alert">وارد کردن شماره تلفن الزامی است.</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-website">وب‌سایت فروشگاه <span class="optional">(اختیاری)</span></label>
+                        <input id="contact-website"
+                               type="url"
+                               class="form-input"
+                               placeholder="مثال: https://myshop.com"
+                               @bind="form.Website"
+                               @bind:event="oninput"
+                               maxlength="200"
+                               autocomplete="url"
+                               dir="ltr"
+                               disabled="@isSubmitting" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contact-desc">توضیحات <span class="required" aria-hidden="true">*</span></label>
+                        <textarea id="contact-desc"
+                                  class="form-input form-textarea @(descError ? "input-error" : "")"
+                                  placeholder="بنویسید چه نیازی دارید، چند مشتری دارید و فروشگاه شما در چه حوزه‌ای فعالیت می‌کند..."
+                                  @bind="form.Description"
+                                  @bind:event="oninput"
+                                  maxlength="1000"
+                                  rows="4"
+                                  disabled="@isSubmitting"></textarea>
+                        @if (descError)
+                        {
+                            <span class="field-error" role="alert">وارد کردن توضیحات الزامی است.</span>
+                        }
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-submit" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner sm" aria-hidden="true"></span>
+                            <span>در حال ارسال...</span>
+                        }
+                        else
+                        {
+                            <span>ارسال درخواست</span>
+                        }
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    private ContactFormDto form = new();
+    private bool isSubmitting = false;
+    private bool formSubmitted = false;
+    private string formError = string.Empty;
+
+    private bool nameError = false;
+    private bool phoneError = false;
+    private bool descError = false;
+
+    private bool Validate()
+    {
+        nameError = string.IsNullOrWhiteSpace(form.Name);
+        phoneError = string.IsNullOrWhiteSpace(form.Phone);
+        descError = string.IsNullOrWhiteSpace(form.Description);
+        return !nameError && !phoneError && !descError;
+    }
+
+    private async Task SubmitForm()
+    {
+        formError = string.Empty;
+        if (!Validate()) return;
+
+        isSubmitting = true;
+        try
+        {
+            var ok = await ContactSvc.SendAsync(form);
+            if (ok)
+            {
+                formSubmitted = true;
+            }
+            else
+            {
+                formError = "متأسفیم، ارسال با خطا مواجه شد. لطفاً مستقیم از طریق بله با ما تماس بگیرید.";
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        form = new();
+        formSubmitted = false;
+        formError = string.Empty;
+        nameError = false;
+        phoneError = false;
+        descError = false;
+    }
+}
