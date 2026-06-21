@@ -100,8 +100,10 @@ Incoming update
       │     └─ look up each order in DB, append status + postal tracking code
       │
       └─ FEEDBACK present?
-            └─ route to the correct handler (see Feedback Types below)
-                  └─ if HasPhoto: true → ForwardMessageAsync() stored photos
+            └─ validate required fields against RequiredFeedbackFields map
+                  ├─ if missing fields → send visible fallback text to user asking for them
+                  └─ if valid → route to the correct handler (see Feedback Types below)
+                        └─ if HasPhoto: true → ForwardMessageAsync() stored photos
 ```
 
 ---
@@ -109,17 +111,20 @@ Incoming update
 ## AI Agent & Instructions
 
 The AI system prompt is loaded at startup from every `*.md` file inside the `Chat/` directory.  
-Currently there is one file: **`Chat/chtbot-instructions-main.md`**.
+Currently there are two main files defining distinct conversational profiles:
+- **`Chat/chtbot-instructions-main.md`**: Ananas Collection Boutique bot profile.
+- **`Chat/chtbot-instructions-akhlaghi.md`**: Akhlaghi Dress bot profile (includes in-store workflows).
 
-This file defines:
-- The bot's persona (a polite Persian-language boutique support assistant).
+These files define:
+- The bot's persona (a polite Persian-language support assistant).
 - All in-scope and out-of-scope topics.
 - Exact response scripts for each workflow.
-- The JSON templates for `<<ORDER_CODE>>` and `<<FEEDBACK>>` blocks.
-- A 12-section knowledge base (products, shipping, policies, etc.).
+- The JSON templates and required fields for `<<ORDER_CODE>>` and `<<FEEDBACK>>` blocks.
+- A knowledge base (products, shipping, policies, etc.) specific to each branch.
 
-**To modify the bot's behavior, edit `Chat/chtbot-instructions-main.md`.**  
-The file is automatically copied to the output directory at build time (`CopyToOutputDirectory: Always`).
+**To modify the bot's behavior, edit the relevant `chtbot-instructions-*.md` file.**  
+The files are automatically copied to the output directory at build time (`CopyToOutputDirectory: Always`).
+And remember: Never generate `<<FEEDBACK>>` until every required field has been explicitly provided.
 
 ### AI Provider Switch
 
@@ -136,7 +141,7 @@ Both implementations share the same `IChatAgentService` interface and load the s
 
 ## Feedback Types (Escalation Routing)
 
-When the AI cannot resolve an issue itself, it emits a `<<FEEDBACK … >>` block containing a JSON object with a `Type` field and a `TargetChatId`. `BotUpdateHandler` routes the notification accordingly:
+When the AI cannot resolve an issue itself, it emits a `<<FEEDBACK … >>` block containing a JSON object with a `Type` field. `BotUpdateHandler` validates that **all required fields** (defined in `RequiredFeedbackFields`) exist. If valid, it routes the notification to the target human-support group:
 
 | Type | Description | Target Chat |
 |---|---|---|
@@ -151,6 +156,10 @@ When the AI cannot resolve an issue itself, it emits a `<<FEEDBACK … >>` block
 | `FailedPayment` | Payment deducted but order not confirmed | 5477856928 |
 | `DelayedDelivery` | Order not arrived after 8+ business days | 5172013155 |
 | `WrongSize` | Size doesn't fit | 5249048339 |
+| `InStoreBillingError` | Akhlaghi branch billing dispute | *See instruction configuration* |
+| `InStoreComplaint` | Akhlaghi branch staff complaint | *See instruction configuration* |
+
+> **Safety Gate:** If the AI attempts to trigger a FEEDBACK block but forgets a required field (e.g. `PhoneNumber` or `OrderCode`), `BotUpdateHandler.TryDispatchFeedbackAsync` intercepts it, rejects the group send, and falls back to passing along the AI's visible text (which prompts the user for the missing fields).
 
 ---
 

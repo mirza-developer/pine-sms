@@ -30,6 +30,33 @@ public class BotUpdateHandler(BaleBotClient botClient,
         IConfiguration configuration) : IBotUpdateHandler
 {
     private const string SupportWaitNotice = "\nلطفاً تا ۷۲ ساعت کاری آینده صبوری کنید. درخواست شما بررسی می‌شود. لطفاً دیگر پیام ندهید، پاسخ‌گویی بر اساس آخرین پیام‌ها انجام می‌شود.";
+
+    /// <summary>
+    /// Maps each FEEDBACK type to the string fields that must be present, non-empty,
+    /// and not a literal placeholder value (e.g. "{OrderCode}") before the admin
+    /// notification is dispatched. If any required field fails, the handler falls back
+    /// to sending the AI's visible text to the user and skips the admin notification.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> RequiredFeedbackFields = new(StringComparer.Ordinal)
+    {
+        // OrderCode intentionally omitted — instructions say do NOT ask if user didn't mention it
+        ["Satisfaction"]         = ["Description"],
+        ["Complaint"]            = ["OrderCode", "PhoneNumber", "Date", "Description", "FullName"],
+        ["DefectiveProduct"]     = ["OrderCode", "PhoneNumber", "FullName", "Description"],
+        ["PhotoMismatch"]        = ["OrderCode", "PhoneNumber", "FullName", "Description"],
+        ["ReturnedPackage"]      = ["OrderCode", "PhoneNumber", "FullName", "TrackingCode"],
+        ["Wholesale"]            = ["PhoneNumber", "FullName", "Description"],
+        ["NoOrderCode"]          = ["FullName", "PhoneNumber", "OrderAmount", "PaymentDate"],
+        ["FailedPayment"]        = ["PhoneNumber", "FullName", "OrderAmount", "PaymentDate", "Description"],
+        ["DelayedDelivery"]      = ["OrderCode", "PhoneNumber", "FullName"],
+        ["WrongSize"]            = ["OrderCode", "PhoneNumber", "FullName", "Description"],
+        // FullName omitted — user may be anonymous; Description is the minimum useful signal
+        ["UnknownQuery"]         = ["Description"],
+        ["InStoreBillingError"]  = ["PhoneNumber", "FullName", "BranchName", "Description"],
+        ["InStoreComplaint"]     = ["PhoneNumber", "FullName", "BranchName", "Description"],
+        ["StoreHoursQuery"]      = ["Description"],
+    };
+
     private readonly List<long> chatIds = new()
     {
         // Ananas Support Groups
@@ -168,12 +195,15 @@ public class BotUpdateHandler(BaleBotClient botClient,
 
             // A FEEDBACK block may accompany the ORDER_CODE block (e.g. DelayedDelivery
             // where the AI checks the order and escalates in the same turn). Process it too.
+            // If dispatch fails here the order-status reply was already sent, so no fallback needed.
             if (!string.IsNullOrEmpty(feedbackJson))
-                await HandleFeedbackAsync(chatId, feedbackJson, username, ct);
+                await TryDispatchFeedbackAsync(feedbackJson, visibleText: null, chatId, username, ct);
         }
         else if (!string.IsNullOrEmpty(feedbackJson))
         {
-            await HandleFeedbackAsync(chatId, feedbackJson, username, ct);
+            // If the FEEDBACK is invalid/incomplete, fall back to sending the AI's visible text
+            // (which should contain the AI asking the user for the missing field).
+            await TryDispatchFeedbackAsync(feedbackJson, visibleText: visibleOrderCodes, chatId, username, ct);
         }
         else
         {
@@ -188,7 +218,64 @@ public class BotUpdateHandler(BaleBotClient botClient,
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, text, IsFromBot: true, DateTime.UtcNow));
     }
 
-    private async Task HandleFeedbackAsync(long userChatId, string feedbackJson, string username, CancellationToken ct)
+    /// <summary>
+    /// Parses <paramref name="feedbackJson"/>, validates that all required fields for the
+    /// feedback type are present and non-placeholder, then dispatches to the admin-group
+    /// handler. Returns <c>true</c> when dispatching succeeded.
+    ///
+    /// When any check fails the method:
+    /// <list type="bullet">
+    ///   <item>logs a structured warning,</item>
+    ///   <item>sends <paramref name="visibleText"/> to the user (when not null/empty) so the
+    ///         AI's follow-up question — asking for the missing field — reaches the user, and</item>
+    ///   <item>returns <c>false</c> without contacting any admin group.</item>
+    /// </list>
+    /// </summary>
+    private async Task<bool> TryDispatchFeedbackAsync(
+        string feedbackJson, string? visibleText, long chatId, string username, CancellationToken ct)
+    {
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(feedbackJson);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "Feedback JSON produced by AI is malformed — skipping admin notification");
+            if (!string.IsNullOrWhiteSpace(visibleText))
+                await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
+            return false;
+        }
+
+        using (doc)
+        {
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("Type", out var typeProp))
+            {
+                logger.LogWarning("Feedback JSON missing 'Type' field — skipping admin notification");
+                if (!string.IsNullOrWhiteSpace(visibleText))
+                    await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
+                return false;
+            }
+
+            var feedbackType = typeProp.GetString() ?? string.Empty;
+
+            if (!ValidateFeedbackJson(feedbackType, root))
+            {
+                // ValidateFeedbackJson already logged per-field warnings.
+                // Send the AI's visible text — it should contain the question asking for the missing field.
+                if (!string.IsNullOrWhiteSpace(visibleText))
+                    await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
+                return false;
+            }
+
+            await HandleFeedbackAsync(chatId, root, username, ct);
+            return true;
+        }
+    }
+
+    private async Task HandleFeedbackAsync(long userChatId, JsonElement root, string username, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(username))
         {
@@ -198,17 +285,10 @@ public class BotUpdateHandler(BaleBotClient botClient,
             return;
         }
 
-        using var feedbackDoc = JsonDocument.Parse(feedbackJson);
-        var root = feedbackDoc.RootElement;
-
-        // Extract feedback type to determine routing
-        if (!root.TryGetProperty("Type", out var typeProperty))
-        {
-            logger.LogWarning("Feedback JSON missing 'Type' field");
-            return;
-        }
-
-        string feedbackType = typeProperty.GetString() ?? string.Empty;
+        // Type was already validated upstream; read it again for routing.
+        var feedbackType = root.TryGetProperty("Type", out var typeProp)
+            ? typeProp.GetString() ?? string.Empty
+            : string.Empty;
 
         // Read target chat ID directly from the JSON generated by the AI
         if (!root.TryGetProperty("TargetChatId", out var chatIdProperty) ||
@@ -321,10 +401,10 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageComplaintSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageComplaintSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var orderCode = root.GetProperty("OrderCode").GetString();
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var date = root.GetProperty("Date").GetString();
-        var description = root.GetProperty("Description").GetString();
+        var orderCode    = root.TryGetProperty("OrderCode",    out var ocProp)   ? ocProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var date         = root.TryGetProperty("Date",         out var dtProp)   ? dtProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
 
         string complaintLog = $"📣 شکایت/درخواست پیگیری جدید ثبت شد:\n" +
             $"کد سفارش: {orderCode}\n" +
@@ -359,11 +439,11 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var orderCode = root.GetProperty("OrderCode").GetString();
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
-        var description = root.GetProperty("Description").GetString();
-        bool hasPhoto = root.TryGetProperty("HasPhoto", out var photoEl) && photoEl.GetBoolean();
+        var orderCode    = root.TryGetProperty("OrderCode",    out var ocProp)   ? ocProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
+        bool hasPhoto    = GetHasPhoto(root);
 
         string defectiveLog = $"⚠️ گزارش محصول معیوب/خراب:\n" +
             $"کد سفارش: {orderCode}\n" +
@@ -399,11 +479,11 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var orderCode = root.GetProperty("OrderCode").GetString();
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
-        var description = root.GetProperty("Description").GetString();
-        bool hasPhoto = root.TryGetProperty("HasPhoto", out var photoEl) && photoEl.GetBoolean();
+        var orderCode    = root.TryGetProperty("OrderCode",    out var ocProp)   ? ocProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
+        bool hasPhoto    = GetHasPhoto(root);
 
         string mismatchLog = $"📸 گزارش مغایرت عکس و محصول:\n" +
             $"کد سفارش: {orderCode}\n" +
@@ -439,10 +519,10 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var orderCode = root.GetProperty("OrderCode").GetString();
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
-        var trackingCode = root.GetProperty("TrackingCode").GetString();
+        var orderCode    = root.TryGetProperty("OrderCode",    out var ocProp)   ? ocProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var trackingCode = root.TryGetProperty("TrackingCode", out var tcProp)   ? tcProp.GetString()   ?? "نامشخص" : "نامشخص";
 
         string returnedLog = $"📦 گزارش بسته برگشت خورده:\n" +
             $"کد سفارش: {orderCode}\n" +
@@ -462,9 +542,9 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
-        var description = root.GetProperty("Description").GetString();
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
 
         string wholesaleLog = $"📦 درخواست سفارش عمده جدید:\n" +
             $"نام و نام خانوادگی: {fullName}\n" +
@@ -481,10 +561,10 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var fullName = root.GetProperty("FullName").GetString();
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var orderAmount = root.GetProperty("OrderAmount").GetString();
-        var paymentDate = root.GetProperty("PaymentDate").GetString();
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var orderAmount  = root.TryGetProperty("OrderAmount",  out var oaProp)   ? oaProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var paymentDate  = root.TryGetProperty("PaymentDate",  out var pdProp)   ? pdProp.GetString()   ?? "نامشخص" : "نامشخص";
 
         string noCodeLog = $"🔍 درخواست یافتن کد سفارش:\n" +
             $"نام و نام خانوادگی: {fullName}\n" +
@@ -502,11 +582,11 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
-        var orderAmount = root.GetProperty("OrderAmount").GetString();
-        var paymentDate = root.GetProperty("PaymentDate").GetString();
-        var description = root.GetProperty("Description").GetString();
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var orderAmount  = root.TryGetProperty("OrderAmount",  out var oaProp)   ? oaProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var paymentDate  = root.TryGetProperty("PaymentDate",  out var pdProp)   ? pdProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
 
         string failedPaymentLog = $"💳 گزارش پرداخت ناموفق:\n" +
             $"نام و نام خانوادگی: {fullName}\n" +
@@ -525,9 +605,9 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var orderCode = root.GetProperty("OrderCode").GetString();
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.GetProperty("FullName").GetString();
+        var orderCode    = root.TryGetProperty("OrderCode",    out var ocProp)   ? ocProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
 
         string delayedLog = $"⏰ گزارش تاخیر در تحویل (بالای ۸ روز کاری):\n" +
             $"کد سفارش: {orderCode}\n" +
@@ -546,10 +626,10 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var orderCode = root.GetProperty("OrderCode").GetString();
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.TryGetProperty("FullName", out var fnProp) ? fnProp.GetString() : "نامشخص";
-        var description = root.GetProperty("Description").GetString();
+        var orderCode    = root.TryGetProperty("OrderCode",    out var ocProp)   ? ocProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
 
         string wrongSizeLog = $"📏 گزارش سایز نامناسب:\n" +
             $"کد سفارش: {orderCode}\n" +
@@ -586,11 +666,11 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.GetProperty("FullName").GetString();
-        var branchName = root.GetProperty("BranchName").GetString();
-        var description = root.GetProperty("Description").GetString();
-        bool hasPhoto = root.TryGetProperty("HasPhoto", out var photoEl) && photoEl.GetBoolean();
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var branchName   = root.TryGetProperty("BranchName",   out var bnProp)   ? bnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
+        bool hasPhoto    = GetHasPhoto(root);
 
         string logText = $"🧾 گزارش خطای فاکتور خرید حضوری:\n" +
             $"نام و نام خانوادگی: {fullName}\n" +
@@ -623,10 +703,10 @@ public class BotUpdateHandler(BaleBotClient botClient,
         await botClient.SendMessageAsync(userChatId, messageSuccess, ct);
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, userChatId, messageSuccess, IsFromBot: true, DateTime.UtcNow));
 
-        var phoneNumber = root.GetProperty("PhoneNumber").GetString();
-        var fullName = root.GetProperty("FullName").GetString();
-        var branchName = root.GetProperty("BranchName").GetString();
-        var description = root.GetProperty("Description").GetString();
+        var phoneNumber  = root.TryGetProperty("PhoneNumber",  out var phProp)   ? phProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var fullName     = root.TryGetProperty("FullName",     out var fnProp)   ? fnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var branchName   = root.TryGetProperty("BranchName",   out var bnProp)   ? bnProp.GetString()   ?? "نامشخص" : "نامشخص";
+        var description  = root.TryGetProperty("Description",  out var dscProp)  ? dscProp.GetString()  ?? "نامشخص" : "نامشخص";
 
         string logText = $"🏬 گزارش شکایت از رفتار پرسنل خرید حضوری:\n" +
             $"نام و نام خانوادگی: {fullName}\n" +
@@ -678,6 +758,89 @@ public class BotUpdateHandler(BaleBotClient botClient,
         {
             return "\n" + $"❌ سفارشی با کد «{orderCode}» یافت نشد.";
         }
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> when a field must be considered missing, meaning the admin
+    /// notification must NOT be dispatched. A field is missing when it is:
+    /// <list type="bullet">
+    ///   <item>absent from the JSON object,</item>
+    ///   <item>null, empty, or whitespace, or</item>
+    ///   <item>still a literal template placeholder such as <c>{OrderCode}</c> — the AI
+    ///         copied the template without substituting a real value.</item>
+    /// </list>
+    /// </summary>
+    private static bool IsFieldMissing(JsonElement root, string fieldName)
+    {
+        if (!root.TryGetProperty(fieldName, out var element))
+            return true;
+
+        if (element.ValueKind == JsonValueKind.Null)
+            return true;
+
+        var value = element.ValueKind == JsonValueKind.String ? element.GetString() : element.ToString();
+
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+
+        // Detect unresolved template placeholders: {AnyWord}
+        var trimmed = value.Trim();
+        if (trimmed.Length >= 3 && trimmed[0] == '{' && trimmed[^1] == '}')
+        {
+            var inner = trimmed[1..^1];
+            if (inner.Length > 0 && inner.All(char.IsLetter))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> when all required fields for <paramref name="feedbackType"/>
+    /// are present and valid. Logs a warning for each missing field.
+    /// Returns <c>true</c> (allow) when the type is unknown to avoid blocking new types
+    /// that haven't been added to <see cref="RequiredFeedbackFields"/> yet.
+    /// </summary>
+    private bool ValidateFeedbackJson(string feedbackType, JsonElement root)
+    {
+        if (!RequiredFeedbackFields.TryGetValue(feedbackType, out var requiredFields))
+        {
+            logger.LogWarning("Feedback type '{FeedbackType}' has no required-field definition — dispatching without validation", feedbackType);
+            return true;
+        }
+
+        var valid = true;
+        foreach (var field in requiredFields)
+        {
+            if (IsFieldMissing(root, field))
+            {
+                logger.LogWarning(
+                    "Feedback type '{FeedbackType}' blocked: required field '{Field}' is missing or is still a placeholder",
+                    feedbackType, field);
+                valid = false;
+            }
+        }
+
+        return valid;
+    }
+
+    /// <summary>
+    /// Reads a boolean <c>HasPhoto</c> field from the JSON, handling all three cases
+    /// the AI may produce: JSON <c>true</c>/<c>false</c> literals, or the strings
+    /// <c>"true"</c>/<c>"false"</c>.
+    /// </summary>
+    private static bool GetHasPhoto(JsonElement root)
+    {
+        if (!root.TryGetProperty("HasPhoto", out var el))
+            return false;
+
+        return el.ValueKind switch
+        {
+            JsonValueKind.True  => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(el.GetString(), out var b) && b,
+            _ => false
+        };
     }
 }
 
