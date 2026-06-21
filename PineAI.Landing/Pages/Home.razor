@@ -456,14 +456,10 @@
         isSubmitting = true;
         try
         {
-            var ok = await ContactSvc.SendAsync(form);
+            var ok = await ContactSvc.SendMessageAsync(form, CancellationToken.None);
             if (ok)
             {
                 formSubmitted = true;
-            }
-            else
-            {
-                formError = "متأسفیم، ارسال با خطا مواجه شد. لطفاً مستقیم از طریق بله با ما تماس بگیرید.";
             }
         }
         finally

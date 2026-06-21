@@ -7,13 +7,13 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? string.Empty;
-
 builder.Services.AddScoped(sp =>
 {
-    var client = new HttpClient();
-    if (!string.IsNullOrEmpty(apiBaseUrl))
-        client.BaseAddress = new Uri(apiBaseUrl);
+    var baseUrl = builder.Configuration["ApiBaseUrl"]!;
+    var apiKey = builder.Configuration["ApiKey"]!;
+    var client = new HttpClient { BaseAddress = new Uri(baseUrl) };
+    client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+    client.Timeout = TimeSpan.FromSeconds(60);
     return client;
 });
 

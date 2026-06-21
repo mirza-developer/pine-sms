@@ -8,6 +8,7 @@
   <Folder Name="/src/Presentation/" />
   <Folder Name="/src/Presentation/Api/">
     <Project Path="PineAI.Api/PineAI.Api.csproj" />
+    <Project Path="PineAI.Api.Landing/PineAI.Api.Landing.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/Consoles/">
     <Project Path="PineAI.InstructionAnalyzer/PineAI.InstructionAnalyzer.csproj">

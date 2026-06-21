@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 
 namespace PineAI.Landing.Services;
 
@@ -15,26 +16,33 @@ public class ContactService
     private readonly HttpClient httpClient;
     private readonly SiteSettings settings;
 
-    public ContactService(HttpClient httpClient, SiteSettings settings)
+    private readonly ILogger<ContactService> logger;
+
+    public ContactService(HttpClient httpClient
+        , SiteSettings settings
+        , ILogger<ContactService> logger)
     {
         this.httpClient = httpClient;
         this.settings = settings;
+        this.logger = logger;
     }
 
-    public async Task<bool> SendAsync(ContactFormDto form, CancellationToken ct = default)
+    public async Task<bool> SendMessageAsync(ContactFormDto data, CancellationToken ct)
     {
-        var url = settings.ContactApiUrl;
-        if (string.IsNullOrWhiteSpace(url))
-            return false;
 
         try
         {
-            var response = await httpClient.PostAsJsonAsync(url, form, ct);
-            return response.IsSuccessStatusCode;
+            var response = await httpClient.PostAsJsonAsync("api/contact", data, ct);
+            if (response.IsSuccessStatusCode)
+                return true;
+
+            var error = await response.Content.ReadAsStringAsync(ct);
+            logger.LogWarning("sendMessage failed: {StatusCode} {Error}", response.StatusCode, error);
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            logger.LogError(ex, "Exception sending message to chat {ChatId}", 451596244);
         }
+        return false;
     }
 }

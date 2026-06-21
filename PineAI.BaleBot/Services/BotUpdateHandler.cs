@@ -26,10 +26,18 @@ public class BotUpdateHandler(BaleBotClient botClient,
         ChatSessionStore sessionStore,
         BotChatMessageQueue chatMessageQueue,
         PhotoMessageStore photoMessageStore,
+        UserPenaltyStore penaltyStore,
         ILogger<BotUpdateHandler> logger,
         IConfiguration configuration) : IBotUpdateHandler
 {
     private const string SupportWaitNotice = "\nلطفاً تا ۷۲ ساعت کاری آینده صبوری کنید. درخواست شما بررسی می‌شود. لطفاً دیگر پیام ندهید، پاسخ‌گویی بر اساس آخرین پیام‌ها انجام می‌شود.";
+
+    private const string PenaltyAppliedMessage =
+        "⛔ به دلیل رفتار نامناسب مکرر، دسترسی شما به مدت ۱۰ دقیقه محدود شد. " +
+        "لطفاً پس از ۱۰ دقیقه مجدداً تلاش کنید.";
+
+    private const string PenaltyLockedMessage =
+        "⛔ دسترسی شما موقتاً محدود است. لطفاً ۱۰ دقیقه صبر کنید.";
 
     /// <summary>
     /// Maps each FEEDBACK type to the string fields that must be present, non-empty,
@@ -106,6 +114,15 @@ public class BotUpdateHandler(BaleBotClient botClient,
             return;
         }
 
+        // Silently drop messages from explicitly blocked usernames.
+        // No reply is sent, nothing is persisted, and the AI is never called.
+        var blockedUsernames = configuration.GetSection("BlockedUsernames").Get<string[]>() ?? [];
+        if (blockedUsernames.Contains(username, StringComparer.OrdinalIgnoreCase))
+        {
+            logger.LogInformation("Blocked username @{Username} — message suppressed", username);
+            return;
+        }
+
         logger.LogInformation("Update {UpdateId}: chat={ChatId} hasPhoto={HasPhoto}", update.UpdateId, chatId, hasPhoto);
 
         // When the user sends a photo, store it for later forwarding
@@ -144,6 +161,17 @@ public class BotUpdateHandler(BaleBotClient botClient,
         // Enqueue user message for background persistence (fire-and-forget)
         chatMessageQueue.TryEnqueue(new BotChatMessageEntry(username, chatId, text, IsFromBot: false, DateTime.UtcNow));
 
+        // Penalty gate: if the user is locked out, reject without calling the AI.
+        // The gate fires AFTER persistence so penalised messages are still auditable.
+        // It also fires BEFORE the /start session-reset so users cannot escape the
+        // lock by sending /start.
+        if (penaltyStore.IsUnderPenalty(chatId))
+        {
+            logger.LogInformation("Chat {ChatId} is under penalty — message suppressed", chatId);
+            await botClient.SendMessageAsync(chatId, PenaltyLockedMessage, ct);
+            return;
+        }
+
         // /start → reset session so user always gets a fresh greeting
         if (text.Equals("/start", StringComparison.OrdinalIgnoreCase))
         {
@@ -152,10 +180,28 @@ public class BotUpdateHandler(BaleBotClient botClient,
 
         var existingSession = sessionStore.GetSession(chatId);
         var response = await agentService.SendWithSessionAsync(existingSession, text);
+
+        // Strip <<PENALTY>> FIRST and BEFORE saving the session.
+        // If the raw block is saved into session history the AI sees it on the next
+        // turn, copies it verbatim, and it leaks to the user even after stripping.
+        var textAfterPenalty = ResponseBlockTools.StripPenaltyBlocks(response.ResponseText, out var penaltyJson);
+
+        if (!string.IsNullOrEmpty(penaltyJson))
+        {
+            // Clear session so the user starts fresh after the lock expires.
+            sessionStore.RemoveSession(chatId);
+            penaltyStore.ApplyPenalty(chatId);
+            logger.LogWarning("Penalty applied to chat {ChatId}. Reason: {Reason}", chatId, penaltyJson);
+            await SendAndEnqueueBotReplyAsync(chatId, username, PenaltyAppliedMessage, ct);
+            return;
+        }
+
+        // Session is saved only after confirming no penalty block is present.
         sessionStore.SetSession(chatId, response.SerializedSession);
 
+        // Continue normal block processing on the penalty-stripped text
         var orderCodes = new List<string>();
-        var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(response.ResponseText, orderCodes);
+        var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(textAfterPenalty, orderCodes);
         visibleOrderCodes = ResponseBlockTools.StripFeedbackBlocks(visibleOrderCodes, out var feedbackJson);
 
         // If the AI signalled one or more order codes, resolve them from the DB

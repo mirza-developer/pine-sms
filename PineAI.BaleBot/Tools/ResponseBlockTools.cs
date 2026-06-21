@@ -15,6 +15,7 @@ public static class ResponseBlockTools
 {
     private const string OrderCodeStart = "<<ORDER_CODE";
     private const string FeedbackStart = "<<FEEDBACK";
+    private const string PenaltyStart = "<<PENALTY";
     private const string BlockEnd = ">>";
 
     /// <summary>
@@ -102,7 +103,164 @@ public static class ResponseBlockTools
     }
 
     /// <summary>
-    /// Converts Persian (۰–۹) and Arabic-Indic (٠–٩) digits to ASCII digits (0–9).
+    /// Strips the <c>&lt;&lt;PENALTY … &gt;&gt;</c> block from <paramref name="text"/>.
+    /// Extracted penalty JSON is returned via <paramref name="penaltyJson"/>.
+    /// This method is intentionally lenient about how the AI terminates the block:
+    /// <list type="bullet">
+    ///   <item>Accepts the standard <c>&gt;&gt;</c> terminator.</item>
+    ///   <item>Accepts <c>&gt; &gt;</c> with whitespace between the angle brackets.</item>
+    ///   <item>Accepts the Persian/Arabic right-pointing double angle quotation mark <c>»</c> (U+00BB).</item>
+    ///   <item>Accepts the HTML-encoded form <c>&amp;gt;&amp;gt;</c>.</item>
+    ///   <item>If no terminator is found, treats end-of-text as the implicit close so
+    ///         a malformed block is still stripped and its JSON is best-effort extracted.</item>
+    /// </list>
+    /// Also handles the case where the AI wraps the block in a markdown code fence
+    /// (e.g. <c>```text … ```</c>), which is stripped before searching for the block.
+    /// </summary>
+    /// <param name="text">Raw AI response text that may contain a PENALTY block.</param>
+    /// <param name="penaltyJson">
+    /// Output parameter to receive the trimmed penalty JSON from the block.
+    /// </param>
+    /// <returns>The cleaned response text with the PENALTY block removed.</returns>
+    public static string StripPenaltyBlocks(string text, out string? penaltyJson)
+    {
+        penaltyJson = null;
+
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        // Normalize alternate terminator forms to the canonical ">>" so the search
+        // below uses a single literal. This handles AI variations such as Persian
+        // double angle quotation marks, HTML-encoded angle brackets, and ">" pairs
+        // separated by whitespace.
+        text = NormalizePenaltyTerminators(text);
+
+        // The AI sometimes wraps the <<PENALTY>> block in a markdown code fence
+        // (```text ... ``` or ``` ... ```) because the instruction file shows it
+        // as a formatted example. Strip any such fence that contains <<PENALTY
+        // before doing the normal block search.
+        text = StripCodeFencesContaining(text, PenaltyStart);
+
+        var startIndex = 0;
+
+        while (startIndex < text.Length)
+        {
+            var blockStart = text.IndexOf(PenaltyStart, startIndex, StringComparison.OrdinalIgnoreCase);
+            if (blockStart == -1)
+                break;
+
+            var contentStart = blockStart + PenaltyStart.Length;
+            var blockEnd = text.IndexOf(BlockEnd, contentStart, StringComparison.OrdinalIgnoreCase);
+
+            int contentEnd;
+            int blockLength;
+            if (blockEnd == -1)
+            {
+                // No closing ">>" found — the AI forgot to terminate the block.
+                // Treat the rest of the text as the block body and strip it entirely
+                // so the raw block can never leak to the user.
+                contentEnd = text.Length;
+                blockLength = text.Length - blockStart;
+            }
+            else
+            {
+                contentEnd = blockEnd;
+                blockLength = (blockEnd + BlockEnd.Length) - blockStart;
+            }
+
+            var content = text.Substring(contentStart, contentEnd - contentStart).Trim();
+
+            if (content.Length > 0)
+                penaltyJson = content;
+
+            text = text.Remove(blockStart, blockLength);
+            startIndex = blockStart;
+        }
+
+        return text.Trim();
+    }
+
+    /// <summary>
+    /// Replaces non-standard ">>" terminator variants with the canonical "&gt;&gt;"
+    /// so block stripping can rely on a single literal search.
+    /// </summary>
+    private static string NormalizePenaltyTerminators(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        // HTML-encoded angle brackets
+        if (text.Contains("&gt;&gt;", StringComparison.OrdinalIgnoreCase))
+            text = text.Replace("&gt;&gt;", BlockEnd, StringComparison.OrdinalIgnoreCase);
+
+        // Persian/Arabic right-pointing double angle quotation mark (U+00BB)
+        if (text.Contains('\u00BB'))
+            text = text.Replace("\u00BB", BlockEnd);
+
+        // "> >" with any amount of whitespace between the two angle brackets,
+        // but only when preceded by a newline so we don't accidentally rewrite
+        // a comparison operator embedded in normal Persian text.
+        text = System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"(?<=\n)\s*>\s+>",
+            BlockEnd);
+
+        return text;
+    }
+
+    /// <summary>
+    /// Removes markdown code fences (``` ... ```) from <paramref name="text"/>
+    /// when the fenced content contains <paramref name="marker"/>.
+    /// Only the fence delimiters are removed; the inner content is preserved so
+    /// subsequent block-stripping logic can find the embedded command.
+    /// </summary>
+    private static string StripCodeFencesContaining(string text, string marker)
+    {
+        const string fence = "```";
+        var startIndex = 0;
+
+        while (startIndex < text.Length)
+        {
+            var fenceStart = text.IndexOf(fence, startIndex, StringComparison.Ordinal);
+            if (fenceStart == -1)
+                break;
+
+            // Find the closing fence (must be after the opening one)
+            var fenceEnd = text.IndexOf(fence, fenceStart + fence.Length, StringComparison.Ordinal);
+            if (fenceEnd == -1)
+                break;
+
+            var fenceCloseEnd = fenceEnd + fence.Length;
+            var fencedContent = text.Substring(fenceStart, fenceCloseEnd - fenceStart);
+
+            if (fencedContent.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                // Extract just the inner content (skip the opening line which may be ```text)
+                var innerStart = text.IndexOf('\n', fenceStart);
+                if (innerStart == -1 || innerStart >= fenceEnd)
+                {
+                    // No newline found — remove the whole fence block
+                    text = text.Remove(fenceStart, fenceCloseEnd - fenceStart);
+                    startIndex = fenceStart;
+                }
+                else
+                {
+                    var inner = text.Substring(innerStart + 1, fenceEnd - (innerStart + 1)).TrimEnd();
+                    text = text.Remove(fenceStart, fenceCloseEnd - fenceStart).Insert(fenceStart, inner);
+                    startIndex = fenceStart;
+                }
+            }
+            else
+            {
+                startIndex = fenceCloseEnd;
+            }
+        }
+
+        return text;
+    }
+
+    /// <summary>
+    /// Converts Persian (
     /// </summary>
     public static string NormalizeDigits(string value)
     {

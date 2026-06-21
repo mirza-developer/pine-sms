@@ -81,6 +81,9 @@ Incoming update
       ├─ message has a photo?
       │     └─ store (chatId → messageId) in PhotoMessageStore
       │
+      ├─ user is under active penalty? (UserPenaltyStore)
+      │     └─ send locked message → return (AI never called, /start escape blocked)
+      │
       ├─ build AI input:
       │     text message     → pass as-is
       │     photo + caption  → "[کاربر یک تصویر با توضیح ...]\n<caption>"
@@ -93,8 +96,9 @@ Incoming update
       │     └─ uses/creates per-user session (conversation history)
       │
       ├─ parse AI response:
-      │     StripOrderCodeBlocks()   → collect order codes
-      │     StripFeedbackBlocks()    → collect feedback JSON
+      │     StripPenaltyBlocks()   → if <<PENALTY>> found → apply 10-min lock → return
+      │     StripOrderCodeBlocks() → collect order codes
+      │     StripFeedbackBlocks()  → collect feedback JSON
       │
       ├─ ORDER_CODE present?
       │     └─ look up each order in DB, append status + postal tracking code
@@ -183,7 +187,8 @@ When a customer sends a photo (e.g. to show a defective product):
 | `BaleBotClient` | Singleton | HTTP wrapper for `sendMessage`, `forwardMessage`, `getUpdates` |
 | `ChatSessionStore` | Singleton | In-memory map of `chatId → serialized session JSON` (per-user conversation state) |
 | `PhotoMessageStore` | Singleton | In-memory map of `chatId → [messageId, …]` for pending photo forwards (TTL: 5 min) |
-| `BotChatMessageQueue` | Singleton | `Channel<BotChatMessageEntry>` used as a fire-and-forget write buffer |
+| `UserPenaltyStore` | Singleton | In-memory map of `chatId → PenaltyEntry(ExpiresAt)` for active 10-minute locks; self-evicting on read |
+| `BotChatMessageQueue` | Singleton |
 | `IChatAgentService` | Singleton | AI provider abstraction (`ChatAgentService` or `ArvanChatAgentService`) |
 | `BotUpdateHandler` | Scoped | Core message dispatch logic (one instance per update) |
 
@@ -196,6 +201,27 @@ When a customer sends a photo (e.g. to show a defective product):
 | `BaleBotWorker` | `BackgroundService` | Long-polls `getUpdates` (30 s timeout), dispatches each update concurrently to `IBotUpdateHandler` using dual-semaphore concurrency control |
 | `BotChatMessageSaverWorker` | `BackgroundService` | Drains `BotChatMessageQueue` and persists each entry to the `BotChatMessage` table |
 | `PhotoMessageStoreCleanupWorker` | `BackgroundService` | Periodically evicts expired photo entries from `PhotoMessageStore` |
+| `PenaltyStoreCleanupWorker` | `BackgroundService` | Evicts expired penalty entries from `UserPenaltyStore` every 10 minutes |
+
+---
+
+## Penalty System
+
+When the AI detects that a user has crossed red lines 10 or more times in their current session, or detects spam (the same message sent ≥ 3 times in a row), it emits a `<<PENALTY { "Reason": "…" } >>` block in its response.
+
+### How it works
+
+1. `ResponseBlockTools.StripPenaltyBlocks()` extracts the block from the AI response before any other processing.
+2. `BotUpdateHandler` calls `UserPenaltyStore.ApplyPenalty(chatId)`, which records `ExpiresAt = UtcNow + 10 minutes`.
+3. A Persian notification is sent to the user: `⛔ به دلیل رفتار نامناسب مکرر، دسترسی شما به مدت ۱۰ دقیقه محدود شد.`
+4. For the next 10 minutes, **every message** from that `chatId` (including `/start`) is intercepted by the penalty gate before the AI is ever called. The user receives: `⛔ دسترسی شما موقتاً محدود است. لطفاً ۱۰ دقیقه صبر کنید.`
+5. All blocked messages are still persisted to the database for audit via `BotChatMessageQueue`.
+6. `/start` does **not** lift the lock — the gate fires before the session-reset branch.
+7. `PenaltyStoreCleanupWorker` runs every 10 minutes to evict expired entries from `UserPenaltyStore`. Entries also self-evict on the first `IsUnderPenalty` read after expiry.
+
+### Red lines and spam
+
+See **Section 15** of each `Chat/chtbot-instructions-*.md` file for the exact list of 8 red-line behaviors, the spam definition, and the scripted responses for violations 1–9.
 
 ---
 

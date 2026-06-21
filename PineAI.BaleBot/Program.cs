@@ -67,12 +67,14 @@ try
     builder.Services.AddSingleton<BotChatMessageQueue>();
     builder.Services.AddSingleton<ChatSessionStore>();
     builder.Services.AddSingleton<PhotoMessageStore>();
+    builder.Services.AddSingleton<UserPenaltyStore>();
     builder.Services.AddSingleton<BaleBotClient>();
     builder.Services.AddScoped<IBotUpdateHandler, BotUpdateHandler>();
 
     builder.Services.AddHostedService<BaleBotWorker>();
     builder.Services.AddHostedService<BotChatMessageSaverWorker>();
     builder.Services.AddHostedService<PhotoMessageStoreCleanupWorker>();
+    builder.Services.AddHostedService<PenaltyStoreCleanupWorker>();
 
     var host = builder.Build();
 
