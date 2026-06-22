@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/Solution Items/" />
+  <Folder Name="/Solution Items/Docs/" />
+  <Folder Name="/Solution Items/Docs/Bale/">
+    <File Path="bale-docs.html" />
+  </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/Application/">
     <Project Path="PineAI.Core/PineAI.Core.csproj" />
@@ -7,8 +12,8 @@
   </Folder>
   <Folder Name="/src/Presentation/" />
   <Folder Name="/src/Presentation/Api/">
-    <Project Path="PineAI.Api/PineAI.Api.csproj" />
     <Project Path="PineAI.Api.Landing/PineAI.Api.Landing.csproj" />
+    <Project Path="PineAI.Api/PineAI.Api.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/Consoles/">
     <Project Path="PineAI.InstructionAnalyzer/PineAI.InstructionAnalyzer.csproj">

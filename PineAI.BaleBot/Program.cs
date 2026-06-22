@@ -46,9 +46,7 @@ try
     var token = builder.Configuration["BaleMessenger:Token"] ?? string.Empty;
     builder.Services.AddHttpClient("BaleBotClient", client =>
     {
-        var baseUrl = builder.Configuration["BaleMessenger:BaseUrl"];
-        if (!baseUrl.EndsWith('/')) baseUrl += '/';
-        client.BaseAddress = new Uri($"{baseUrl}bot{token}/");
+        client.BaseAddress = new Uri($"https://tapi.bale.ai/bot{token}/");
         client.Timeout = TimeSpan.FromSeconds(60);
     });
 

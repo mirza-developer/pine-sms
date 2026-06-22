@@ -17,6 +17,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "https://pineai.ir",
+                "https://www.pineai.ir",
                 "https://localhost:7280",
                 "http://localhost:5280")
             .AllowAnyHeader()
