@@ -236,8 +236,13 @@ public class BotUpdateHandler(BaleBotClient botClient,
             else
                 visibleOrderCodes = statusBlock;
 
-            if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
-                await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
+            // The AI's plain text may include a forbidden "data sent to support" claim
+            // (the instruction file forbids it but the AI sometimes ignores the rule).
+            // Strip such claims before forwarding so the user never sees a delivery
+            // confirmation unless the admin notification is actually dispatched below.
+            var safeVisibleOrderCodes = SanitizeUndeliveredSupportClaim(visibleOrderCodes);
+            if (!string.IsNullOrWhiteSpace(safeVisibleOrderCodes))
+                await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleOrderCodes, ct);
 
             // A FEEDBACK block may accompany the ORDER_CODE block (e.g. DelayedDelivery
             // where the AI checks the order and escalates in the same turn). Process it too.
@@ -249,11 +254,18 @@ public class BotUpdateHandler(BaleBotClient botClient,
         {
             // If the FEEDBACK is invalid/incomplete, fall back to sending the AI's visible text
             // (which should contain the AI asking the user for the missing field).
+            // TryDispatchFeedbackAsync sanitizes that text before sending so any false
+            // "data sent to support" claim authored by the AI cannot leak when the admin
+            // dispatch was rejected.
             await TryDispatchFeedbackAsync(feedbackJson, visibleText: visibleOrderCodes, chatId, username, ct);
         }
         else
         {
-            await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
+            // No FEEDBACK block at all — the AI is just chatting with the user. Even here
+            // we strip any false delivery claim because no admin notification will be sent.
+            var safeReply = SanitizeUndeliveredSupportClaim(visibleOrderCodes);
+            if (!string.IsNullOrWhiteSpace(safeReply))
+                await SendAndEnqueueBotReplyAsync(chatId, username, safeReply, ct);
         }
     }
 
@@ -280,6 +292,11 @@ public class BotUpdateHandler(BaleBotClient botClient,
     private async Task<bool> TryDispatchFeedbackAsync(
         string feedbackJson, string? visibleText, long chatId, string username, CancellationToken ct)
     {
+        // Any text we forward to the user in a failure path must be stripped of false
+        // "data sent to support" claims first — the admin notification was not dispatched
+        // in any failure branch, so the user must not be told it was.
+        var safeVisibleText = SanitizeUndeliveredSupportClaim(visibleText);
+
         JsonDocument doc;
         try
         {
@@ -288,8 +305,8 @@ public class BotUpdateHandler(BaleBotClient botClient,
         catch (JsonException ex)
         {
             logger.LogWarning(ex, "Feedback JSON produced by AI is malformed — skipping admin notification");
-            if (!string.IsNullOrWhiteSpace(visibleText))
-                await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
+            if (!string.IsNullOrWhiteSpace(safeVisibleText))
+                await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleText, ct);
             return false;
         }
 
@@ -300,8 +317,8 @@ public class BotUpdateHandler(BaleBotClient botClient,
             if (!root.TryGetProperty("Type", out var typeProp))
             {
                 logger.LogWarning("Feedback JSON missing 'Type' field — skipping admin notification");
-                if (!string.IsNullOrWhiteSpace(visibleText))
-                    await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
+                if (!string.IsNullOrWhiteSpace(safeVisibleText))
+                    await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleText, ct);
                 return false;
             }
 
@@ -311,8 +328,8 @@ public class BotUpdateHandler(BaleBotClient botClient,
             {
                 // ValidateFeedbackJson already logged per-field warnings.
                 // Send the AI's visible text — it should contain the question asking for the missing field.
-                if (!string.IsNullOrWhiteSpace(visibleText))
-                    await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
+                if (!string.IsNullOrWhiteSpace(safeVisibleText))
+                    await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleText, ct);
                 return false;
             }
 
@@ -887,6 +904,133 @@ public class BotUpdateHandler(BaleBotClient botClient,
             JsonValueKind.String => bool.TryParse(el.GetString(), out var b) && b,
             _ => false
         };
+    }
+
+    /// <summary>
+    /// Persian/English phrase fragments that indicate the AI is claiming the user's
+    /// message, data, complaint, photo, or request has been sent / recorded / forwarded
+    /// to the support team or admins. Matched case-insensitively against any normalized
+    /// substring of a sentence. The list intentionally focuses on the unambiguous
+    /// delivery claim — generic words like "پشتیبانی" alone are NOT included so that
+    /// legitimate, non-claim sentences (e.g. "پشتیبانی ما تا ۷۲ ساعت کاری شماره سفارش
+    /// رو براتون می‌فرسته") still reach the user untouched.
+    /// </summary>
+    private static readonly string[] SupportDeliveryClaimMarkers =
+    {
+        "پیام شما به پشتیبان",
+        "پیامتون به پشتیبان",
+        "پیامتون رو به پشتیبان",
+        "پیامتون رو برای پشتیبان",
+        "پیامتون برای پشتیبان",
+        "پیام شما برای پشتیبان",
+        "پیامتون به ادمین",
+        "پیام شما به ادمین",
+        "مشکلتون برای پشتیبان",
+        "مشکل شما به پشتیبان",
+        "درخواست شما به پشتیبان",
+        "درخواستتون به پشتیبان",
+        "اطلاعات شما ثبت شد",
+        "اطلاعاتتون ثبت شد",
+        "درخواست شما ثبت شد",
+        "درخواستتون ثبت شد",
+        "پیام شما ثبت شد",
+        "پیامتون ثبت شد",
+        "به پشتیبانی ارسال شد",
+        "برای پشتیبانی ارسال شد",
+        "به پشتیبانی فرستادیم",
+        "برای پشتیبانی فرستادیم",
+        "به ادمین‌ها ارسال شد",
+        "به ادمین ها ارسال شد",
+        "به ادمین‌ها فرستادیم",
+        "your message was sent to support",
+        "your data has been recorded",
+        "your data was sent to",
+        "sent to our support",
+    };
+
+    /// <summary>
+    /// Strips sentences from the AI's plain visible text that falsely claim the user's
+    /// data was delivered / recorded / forwarded to support or admins. This is used
+    /// only in code paths where no admin-group notification has actually been
+    /// dispatched (validation failure, malformed JSON, missing FEEDBACK block, etc.),
+    /// so that a user can never see a delivery confirmation that does not reflect
+    /// reality.
+    /// </summary>
+    /// <remarks>
+    /// The handler — not the AI — is the authoritative source of delivery confirmations.
+    /// On successful dispatch, each <c>HandleXxxAsync</c> method sends its own hard-coded
+    /// confirmation. The AI is instructed in the chat instruction file to never author
+    /// such a confirmation, but this method is defense-in-depth for when it does.
+    /// </remarks>
+    private string SanitizeUndeliveredSupportClaim(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return text ?? string.Empty;
+
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        var keptLines = new List<string>(lines.Length);
+        var removedAny = false;
+
+        foreach (var line in lines)
+        {
+            // Split each line into sentences using common Persian/Arabic/Latin
+            // sentence terminators (. ! ? ؟ \u06D4). We keep the terminator with the
+            // preceding sentence so the rebuilt text remains readable.
+            var sentences = System.Text.RegularExpressions.Regex.Split(line, @"(?<=[\.\!\?\u061F\u06D4])\s+");
+            var keptSentences = new List<string>(sentences.Length);
+
+            foreach (var sentence in sentences)
+            {
+                if (ContainsSupportDeliveryClaim(sentence))
+                {
+                    removedAny = true;
+                    continue;
+                }
+                keptSentences.Add(sentence);
+            }
+
+            keptLines.Add(string.Join(" ", keptSentences).Trim());
+        }
+
+        // Collapse blank lines that may have been introduced by removing whole-line claims.
+        var result = string.Join("\n", keptLines)
+            .Replace("\n\n\n", "\n\n")
+            .Trim();
+
+        if (removedAny)
+        {
+            logger.LogWarning(
+                "Removed false support-delivery claim from AI reply (no admin notification was actually dispatched on this path)");
+        }
+
+        return result;
+    }
+
+    private static bool ContainsSupportDeliveryClaim(string sentence)
+    {
+        if (string.IsNullOrWhiteSpace(sentence))
+            return false;
+
+        // Normalize common Persian/Arabic character variants so substring matching is
+        // robust against the AI mixing Arabic "ي/ك" with Persian "ی/ک" or omitting
+        // the zero-width non-joiner (U+200C).
+        var normalized = sentence
+            .Replace('\u064A', '\u06CC') // Arabic Yeh -> Persian Yeh
+            .Replace('\u0643', '\u06A9') // Arabic Kaf -> Persian Kaf
+            .Replace("\u200C", string.Empty);
+
+        foreach (var marker in SupportDeliveryClaimMarkers)
+        {
+            var normalizedMarker = marker
+                .Replace('\u064A', '\u06CC')
+                .Replace('\u0643', '\u06A9')
+                .Replace("\u200C", string.Empty);
+
+            if (normalized.Contains(normalizedMarker, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 }
 
