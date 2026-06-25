@@ -204,6 +204,15 @@ public class BotUpdateHandler(BaleBotClient botClient,
         var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(textAfterPenalty, orderCodes);
         visibleOrderCodes = ResponseBlockTools.StripFeedbackBlocks(visibleOrderCodes, out var feedbackJson);
 
+        // Strip any <<VERIFICATION>> block the AI emitted. The block carries the AI's
+        // proposed "data was sent to support" sentence. We never forward that sentence
+        // to the user — each successful HandleXxxAsync method sends its own authoritative
+        // confirmation. Discarding the AI's verification here is what guarantees the user
+        // is never told their data was delivered when, in fact, no admin dispatch occurred
+        // (malformed JSON, missing required fields, missing TargetChatId, …).
+        visibleOrderCodes = ResponseBlockTools.StripVerificationBlocks(visibleOrderCodes, out var aiVerificationText);
+        ValidateAiVerificationText(aiVerificationText);
+
         // If the AI signalled one or more order codes, resolve them from the DB
         if (orderCodes.Count > 0)
         {
@@ -236,13 +245,8 @@ public class BotUpdateHandler(BaleBotClient botClient,
             else
                 visibleOrderCodes = statusBlock;
 
-            // The AI's plain text may include a forbidden "data sent to support" claim
-            // (the instruction file forbids it but the AI sometimes ignores the rule).
-            // Strip such claims before forwarding so the user never sees a delivery
-            // confirmation unless the admin notification is actually dispatched below.
-            var safeVisibleOrderCodes = SanitizeUndeliveredSupportClaim(visibleOrderCodes);
-            if (!string.IsNullOrWhiteSpace(safeVisibleOrderCodes))
-                await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleOrderCodes, ct);
+            if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
+                await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
 
             // A FEEDBACK block may accompany the ORDER_CODE block (e.g. DelayedDelivery
             // where the AI checks the order and escalates in the same turn). Process it too.
@@ -253,19 +257,16 @@ public class BotUpdateHandler(BaleBotClient botClient,
         else if (!string.IsNullOrEmpty(feedbackJson))
         {
             // If the FEEDBACK is invalid/incomplete, fall back to sending the AI's visible text
-            // (which should contain the AI asking the user for the missing field).
-            // TryDispatchFeedbackAsync sanitizes that text before sending so any false
-            // "data sent to support" claim authored by the AI cannot leak when the admin
-            // dispatch was rejected.
+            // (which should contain the AI asking the user for the missing field). The AI's
+            // proposed delivery confirmation has already been removed by StripVerificationBlocks
+            // above, so no false "data sent to support" claim can leak through this path.
             await TryDispatchFeedbackAsync(feedbackJson, visibleText: visibleOrderCodes, chatId, username, ct);
         }
         else
         {
-            // No FEEDBACK block at all — the AI is just chatting with the user. Even here
-            // we strip any false delivery claim because no admin notification will be sent.
-            var safeReply = SanitizeUndeliveredSupportClaim(visibleOrderCodes);
-            if (!string.IsNullOrWhiteSpace(safeReply))
-                await SendAndEnqueueBotReplyAsync(chatId, username, safeReply, ct);
+            // No FEEDBACK block at all — the AI is just chatting with the user.
+            if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
+                await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
         }
     }
 
@@ -292,10 +293,11 @@ public class BotUpdateHandler(BaleBotClient botClient,
     private async Task<bool> TryDispatchFeedbackAsync(
         string feedbackJson, string? visibleText, long chatId, string username, CancellationToken ct)
     {
-        // Any text we forward to the user in a failure path must be stripped of false
-        // "data sent to support" claims first — the admin notification was not dispatched
-        // in any failure branch, so the user must not be told it was.
-        var safeVisibleText = SanitizeUndeliveredSupportClaim(visibleText);
+        // The caller has already stripped any <<VERIFICATION>> block from visibleText,
+        // so the only sentences that can survive in this fallback path are the AI's
+        // ask/answer text (e.g. "please send your order code"). No further sanitisation
+        // of free-form prose is required: false delivery confirmations can only enter
+        // the visible stream through a VERIFICATION block, and those are gone.
 
         JsonDocument doc;
         try
@@ -305,8 +307,8 @@ public class BotUpdateHandler(BaleBotClient botClient,
         catch (JsonException ex)
         {
             logger.LogWarning(ex, "Feedback JSON produced by AI is malformed — skipping admin notification");
-            if (!string.IsNullOrWhiteSpace(safeVisibleText))
-                await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleText, ct);
+            if (!string.IsNullOrWhiteSpace(visibleText))
+                await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
             return false;
         }
 
@@ -317,8 +319,8 @@ public class BotUpdateHandler(BaleBotClient botClient,
             if (!root.TryGetProperty("Type", out var typeProp))
             {
                 logger.LogWarning("Feedback JSON missing 'Type' field — skipping admin notification");
-                if (!string.IsNullOrWhiteSpace(safeVisibleText))
-                    await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleText, ct);
+                if (!string.IsNullOrWhiteSpace(visibleText))
+                    await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
                 return false;
             }
 
@@ -328,8 +330,8 @@ public class BotUpdateHandler(BaleBotClient botClient,
             {
                 // ValidateFeedbackJson already logged per-field warnings.
                 // Send the AI's visible text — it should contain the question asking for the missing field.
-                if (!string.IsNullOrWhiteSpace(safeVisibleText))
-                    await SendAndEnqueueBotReplyAsync(chatId, username, safeVisibleText, ct);
+                if (!string.IsNullOrWhiteSpace(visibleText))
+                    await SendAndEnqueueBotReplyAsync(chatId, username, visibleText, ct);
                 return false;
             }
 
@@ -907,130 +909,67 @@ public class BotUpdateHandler(BaleBotClient botClient,
     }
 
     /// <summary>
-    /// Persian/English phrase fragments that indicate the AI is claiming the user's
-    /// message, data, complaint, photo, or request has been sent / recorded / forwarded
-    /// to the support team or admins. Matched case-insensitively against any normalized
-    /// substring of a sentence. The list intentionally focuses on the unambiguous
-    /// delivery claim — generic words like "پشتیبانی" alone are NOT included so that
-    /// legitimate, non-claim sentences (e.g. "پشتیبانی ما تا ۷۲ ساعت کاری شماره سفارش
-    /// رو براتون می‌فرسته") still reach the user untouched.
+    /// Arabic-only characters that must NEVER appear in a <c>&lt;&lt;VERIFICATION&gt;&gt;</c>
+    /// block emitted by the AI. The instruction file mandates that verification text be
+    /// written in Persian script only — using <c>ی</c>/<c>ک</c>/<c>ه</c> instead of the
+    /// Arabic <c>ي</c>/<c>ك</c>/<c>ة</c>, with no Arabic alif variants or harakat. This
+    /// keeps the user-visible support replies consistent with the rest of the bot's UI
+    /// (which uses Persian script) and surfaces AI drift early via a single log line.
     /// </summary>
-    private static readonly string[] SupportDeliveryClaimMarkers =
+    private static readonly char[] ArabicOnlyCharacters =
     {
-        "پیام شما به پشتیبان",
-        "پیامتون به پشتیبان",
-        "پیامتون رو به پشتیبان",
-        "پیامتون رو برای پشتیبان",
-        "پیامتون برای پشتیبان",
-        "پیام شما برای پشتیبان",
-        "پیامتون به ادمین",
-        "پیام شما به ادمین",
-        "مشکلتون برای پشتیبان",
-        "مشکل شما به پشتیبان",
-        "درخواست شما به پشتیبان",
-        "درخواستتون به پشتیبان",
-        "اطلاعات شما ثبت شد",
-        "اطلاعاتتون ثبت شد",
-        "درخواست شما ثبت شد",
-        "درخواستتون ثبت شد",
-        "پیام شما ثبت شد",
-        "پیامتون ثبت شد",
-        "به پشتیبانی ارسال شد",
-        "برای پشتیبانی ارسال شد",
-        "به پشتیبانی فرستادیم",
-        "برای پشتیبانی فرستادیم",
-        "به ادمین‌ها ارسال شد",
-        "به ادمین ها ارسال شد",
-        "به ادمین‌ها فرستادیم",
-        "your message was sent to support",
-        "your data has been recorded",
-        "your data was sent to",
-        "sent to our support",
+        '\u064A', // ARABIC LETTER YEH        ي  (Persian uses ی U+06CC)
+        '\u0643', // ARABIC LETTER KAF        ك  (Persian uses ک U+06A9)
+        '\u0629', // ARABIC LETTER TEH MARBUTA ة (Persian uses ه U+0647)
+        '\u0649', // ARABIC LETTER ALEF MAKSURA ى
+        '\u0622', // ARABIC LETTER ALEF WITH MADDA ABOVE آ
+        '\u0623', // ARABIC LETTER ALEF WITH HAMZA ABOVE أ
+        '\u0625', // ARABIC LETTER ALEF WITH HAMZA BELOW إ
+        '\u0624', // ARABIC LETTER WAW WITH HAMZA ABOVE ؤ
+        '\u0671', // ARABIC LETTER ALEF WASLA ٱ
+        '\u064B', // ARABIC FATHATAN  ـً
+        '\u064C', // ARABIC DAMMATAN  ـٌ
+        '\u064D', // ARABIC KASRATAN  ـٍ
+        '\u064E', // ARABIC FATHA     ـَ
+        '\u064F', // ARABIC DAMMA     ـُ
+        '\u0650', // ARABIC KASRA     ـِ
+        '\u0651', // ARABIC SHADDA    ـّ
+        '\u0652', // ARABIC SUKUN     ـْ
     };
 
     /// <summary>
-    /// Strips sentences from the AI's plain visible text that falsely claim the user's
-    /// data was delivered / recorded / forwarded to support or admins. This is used
-    /// only in code paths where no admin-group notification has actually been
-    /// dispatched (validation failure, malformed JSON, missing FEEDBACK block, etc.),
-    /// so that a user can never see a delivery confirmation that does not reflect
-    /// reality.
+    /// Validates the inner text of a <c>&lt;&lt;VERIFICATION&gt;&gt;</c> block produced
+    /// by the AI against the rules defined in the chat-instruction file:
+    /// the text must be Persian-only and contain none of <see cref="ArabicOnlyCharacters"/>.
+    /// Violations are logged but never thrown — the block is stripped from the visible
+    /// reply in every code path, so a malformed verification cannot reach the user.
+    /// Logging it here gives operators an early signal that the AI is drifting from the
+    /// instruction file and that the instruction needs to be tightened.
     /// </summary>
-    /// <remarks>
-    /// The handler — not the AI — is the authoritative source of delivery confirmations.
-    /// On successful dispatch, each <c>HandleXxxAsync</c> method sends its own hard-coded
-    /// confirmation. The AI is instructed in the chat instruction file to never author
-    /// such a confirmation, but this method is defense-in-depth for when it does.
-    /// </remarks>
-    private string SanitizeUndeliveredSupportClaim(string? text)
+    private void ValidateAiVerificationText(string? verificationText)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return text ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(verificationText))
+            return;
 
-        var lines = text.Replace("\r\n", "\n").Split('\n');
-        var keptLines = new List<string>(lines.Length);
-        var removedAny = false;
-
-        foreach (var line in lines)
+        var offendingChars = new HashSet<char>();
+        foreach (var c in verificationText)
         {
-            // Split each line into sentences using common Persian/Arabic/Latin
-            // sentence terminators (. ! ? ؟ \u06D4). We keep the terminator with the
-            // preceding sentence so the rebuilt text remains readable.
-            var sentences = System.Text.RegularExpressions.Regex.Split(line, @"(?<=[\.\!\?\u061F\u06D4])\s+");
-            var keptSentences = new List<string>(sentences.Length);
-
-            foreach (var sentence in sentences)
-            {
-                if (ContainsSupportDeliveryClaim(sentence))
-                {
-                    removedAny = true;
-                    continue;
-                }
-                keptSentences.Add(sentence);
-            }
-
-            keptLines.Add(string.Join(" ", keptSentences).Trim());
+            if (Array.IndexOf(ArabicOnlyCharacters, c) >= 0)
+                offendingChars.Add(c);
         }
 
-        // Collapse blank lines that may have been introduced by removing whole-line claims.
-        var result = string.Join("\n", keptLines)
-            .Replace("\n\n\n", "\n\n")
-            .Trim();
+        if (offendingChars.Count == 0)
+            return;
 
-        if (removedAny)
-        {
-            logger.LogWarning(
-                "Removed false support-delivery claim from AI reply (no admin notification was actually dispatched on this path)");
-        }
+        var codepoints = string.Join(
+            ", ",
+            offendingChars.Select(c => $"U+{((int)c):X4} '{c}'"));
 
-        return result;
-    }
-
-    private static bool ContainsSupportDeliveryClaim(string sentence)
-    {
-        if (string.IsNullOrWhiteSpace(sentence))
-            return false;
-
-        // Normalize common Persian/Arabic character variants so substring matching is
-        // robust against the AI mixing Arabic "ي/ك" with Persian "ی/ک" or omitting
-        // the zero-width non-joiner (U+200C).
-        var normalized = sentence
-            .Replace('\u064A', '\u06CC') // Arabic Yeh -> Persian Yeh
-            .Replace('\u0643', '\u06A9') // Arabic Kaf -> Persian Kaf
-            .Replace("\u200C", string.Empty);
-
-        foreach (var marker in SupportDeliveryClaimMarkers)
-        {
-            var normalizedMarker = marker
-                .Replace('\u064A', '\u06CC')
-                .Replace('\u0643', '\u06A9')
-                .Replace("\u200C", string.Empty);
-
-            if (normalized.Contains(normalizedMarker, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        logger.LogWarning(
+            "AI <<VERIFICATION>> block violates the Persian-only rule from the instruction file. " +
+            "Offending Arabic-only character(s): {Codepoints}. Verification text: {Text}",
+            codepoints,
+            verificationText);
     }
 }
 

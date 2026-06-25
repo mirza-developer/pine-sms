@@ -16,6 +16,7 @@ public static class ResponseBlockTools
     private const string OrderCodeStart = "<<ORDER_CODE";
     private const string FeedbackStart = "<<FEEDBACK";
     private const string PenaltyStart = "<<PENALTY";
+    private const string VerificationStart = "<<VERIFICATION";
     private const string BlockEnd = ">>";
 
     /// <summary>
@@ -93,6 +94,58 @@ public static class ResponseBlockTools
 
             if (content.Length > 0)
                 collectedFeedbackData = content;
+
+            var blockLength = (blockEnd + BlockEnd.Length) - blockStart;
+            text = text.Remove(blockStart, blockLength);
+            startIndex = blockStart;
+        }
+
+        return text.Trim();
+    }
+
+    /// <summary>
+    /// Strips all <c>&lt;&lt;VERIFICATION … &gt;&gt;</c> blocks from <paramref name="text"/>.
+    /// The trimmed inner text of the (last) block is returned via
+    /// <paramref name="verificationText"/>, or <c>null</c> when no block is present.
+    /// </summary>
+    /// <remarks>
+    /// A VERIFICATION block carries the confirmation sentence the AI proposes after
+    /// it emits a <c>&lt;&lt;FEEDBACK&gt;&gt;</c> block (e.g. "your message was sent
+    /// to support"). The handler — not the AI — decides whether such a confirmation
+    /// actually reaches the user, so the block is always stripped from visible text
+    /// and only its inner text is exposed to the caller for inspection / logging.
+    /// </remarks>
+    /// <param name="text">Raw AI response text that may contain VERIFICATION blocks.</param>
+    /// <param name="verificationText">
+    /// Output parameter to receive the trimmed inner text from the block, or <c>null</c>
+    /// if no block was found.
+    /// </param>
+    /// <returns>The cleaned response text with all VERIFICATION blocks removed.</returns>
+    public static string StripVerificationBlocks(string text, out string? verificationText)
+    {
+        verificationText = null;
+
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var startIndex = 0;
+
+        while (startIndex < text.Length)
+        {
+            var blockStart = text.IndexOf(VerificationStart, startIndex, StringComparison.OrdinalIgnoreCase);
+            if (blockStart == -1)
+                break;
+
+            var blockEnd = text.IndexOf(BlockEnd, blockStart + VerificationStart.Length, StringComparison.OrdinalIgnoreCase);
+            if (blockEnd == -1)
+                break;
+
+            var content = text
+                .Substring(blockStart + VerificationStart.Length, blockEnd - (blockStart + VerificationStart.Length))
+                .Trim();
+
+            if (content.Length > 0)
+                verificationText = content;
 
             var blockLength = (blockEnd + BlockEnd.Length) - blockStart;
             text = text.Remove(blockStart, blockLength);
