@@ -204,6 +204,15 @@ public class BotUpdateHandler(BaleBotClient botClient,
         var visibleOrderCodes = ResponseBlockTools.StripOrderCodeBlocks(textAfterPenalty, orderCodes);
         visibleOrderCodes = ResponseBlockTools.StripFeedbackBlocks(visibleOrderCodes, out var feedbackJson);
 
+        // Strip any <<VERIFICATION>> block the AI emitted. The block carries the AI's
+        // proposed "data was sent to support" sentence. We never forward that sentence
+        // to the user — each successful HandleXxxAsync method sends its own authoritative
+        // confirmation. Discarding the AI's verification here is what guarantees the user
+        // is never told their data was delivered when, in fact, no admin dispatch occurred
+        // (malformed JSON, missing required fields, missing TargetChatId, …).
+        visibleOrderCodes = ResponseBlockTools.StripVerificationBlocks(visibleOrderCodes, out var aiVerificationText);
+        ValidateAiVerificationText(aiVerificationText);
+
         // If the AI signalled one or more order codes, resolve them from the DB
         if (orderCodes.Count > 0)
         {
@@ -248,12 +257,16 @@ public class BotUpdateHandler(BaleBotClient botClient,
         else if (!string.IsNullOrEmpty(feedbackJson))
         {
             // If the FEEDBACK is invalid/incomplete, fall back to sending the AI's visible text
-            // (which should contain the AI asking the user for the missing field).
+            // (which should contain the AI asking the user for the missing field). The AI's
+            // proposed delivery confirmation has already been removed by StripVerificationBlocks
+            // above, so no false "data sent to support" claim can leak through this path.
             await TryDispatchFeedbackAsync(feedbackJson, visibleText: visibleOrderCodes, chatId, username, ct);
         }
         else
         {
-            await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
+            // No FEEDBACK block at all — the AI is just chatting with the user.
+            if (!string.IsNullOrWhiteSpace(visibleOrderCodes))
+                await SendAndEnqueueBotReplyAsync(chatId, username, visibleOrderCodes, ct);
         }
     }
 
@@ -280,6 +293,12 @@ public class BotUpdateHandler(BaleBotClient botClient,
     private async Task<bool> TryDispatchFeedbackAsync(
         string feedbackJson, string? visibleText, long chatId, string username, CancellationToken ct)
     {
+        // The caller has already stripped any <<VERIFICATION>> block from visibleText,
+        // so the only sentences that can survive in this fallback path are the AI's
+        // ask/answer text (e.g. "please send your order code"). No further sanitisation
+        // of free-form prose is required: false delivery confirmations can only enter
+        // the visible stream through a VERIFICATION block, and those are gone.
+
         JsonDocument doc;
         try
         {
@@ -887,6 +906,70 @@ public class BotUpdateHandler(BaleBotClient botClient,
             JsonValueKind.String => bool.TryParse(el.GetString(), out var b) && b,
             _ => false
         };
+    }
+
+    /// <summary>
+    /// Arabic-only characters that must NEVER appear in a <c>&lt;&lt;VERIFICATION&gt;&gt;</c>
+    /// block emitted by the AI. The instruction file mandates that verification text be
+    /// written in Persian script only — using <c>ی</c>/<c>ک</c>/<c>ه</c> instead of the
+    /// Arabic <c>ي</c>/<c>ك</c>/<c>ة</c>, with no Arabic alif variants or harakat. This
+    /// keeps the user-visible support replies consistent with the rest of the bot's UI
+    /// (which uses Persian script) and surfaces AI drift early via a single log line.
+    /// </summary>
+    private static readonly char[] ArabicOnlyCharacters =
+    {
+        '\u064A', // ARABIC LETTER YEH        ي  (Persian uses ی U+06CC)
+        '\u0643', // ARABIC LETTER KAF        ك  (Persian uses ک U+06A9)
+        '\u0629', // ARABIC LETTER TEH MARBUTA ة (Persian uses ه U+0647)
+        '\u0649', // ARABIC LETTER ALEF MAKSURA ى
+        '\u0622', // ARABIC LETTER ALEF WITH MADDA ABOVE آ
+        '\u0623', // ARABIC LETTER ALEF WITH HAMZA ABOVE أ
+        '\u0625', // ARABIC LETTER ALEF WITH HAMZA BELOW إ
+        '\u0624', // ARABIC LETTER WAW WITH HAMZA ABOVE ؤ
+        '\u0671', // ARABIC LETTER ALEF WASLA ٱ
+        '\u064B', // ARABIC FATHATAN  ـً
+        '\u064C', // ARABIC DAMMATAN  ـٌ
+        '\u064D', // ARABIC KASRATAN  ـٍ
+        '\u064E', // ARABIC FATHA     ـَ
+        '\u064F', // ARABIC DAMMA     ـُ
+        '\u0650', // ARABIC KASRA     ـِ
+        '\u0651', // ARABIC SHADDA    ـّ
+        '\u0652', // ARABIC SUKUN     ـْ
+    };
+
+    /// <summary>
+    /// Validates the inner text of a <c>&lt;&lt;VERIFICATION&gt;&gt;</c> block produced
+    /// by the AI against the rules defined in the chat-instruction file:
+    /// the text must be Persian-only and contain none of <see cref="ArabicOnlyCharacters"/>.
+    /// Violations are logged but never thrown — the block is stripped from the visible
+    /// reply in every code path, so a malformed verification cannot reach the user.
+    /// Logging it here gives operators an early signal that the AI is drifting from the
+    /// instruction file and that the instruction needs to be tightened.
+    /// </summary>
+    private void ValidateAiVerificationText(string? verificationText)
+    {
+        if (string.IsNullOrWhiteSpace(verificationText))
+            return;
+
+        var offendingChars = new HashSet<char>();
+        foreach (var c in verificationText)
+        {
+            if (Array.IndexOf(ArabicOnlyCharacters, c) >= 0)
+                offendingChars.Add(c);
+        }
+
+        if (offendingChars.Count == 0)
+            return;
+
+        var codepoints = string.Join(
+            ", ",
+            offendingChars.Select(c => $"U+{((int)c):X4} '{c}'"));
+
+        logger.LogWarning(
+            "AI <<VERIFICATION>> block violates the Persian-only rule from the instruction file. " +
+            "Offending Arabic-only character(s): {Codepoints}. Verification text: {Text}",
+            codepoints,
+            verificationText);
     }
 }
 
