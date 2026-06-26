@@ -207,7 +207,7 @@ When a customer sends a photo (e.g. to show a defective product):
 
 ## Penalty System
 
-When the AI detects that a user has crossed red lines 10 or more times in their current session, or detects spam (the same message sent ≥ 3 times in a row), it emits a `<<PENALTY { "Reason": "…" } >>` block in its response.
+When the AI detects that a user has crossed red lines 10 or more times in their current session, or detects spam (the same message sent ≥ 3 times in a row), it emits a `<<PENALTY … >>` block in its response. The block body is plain text (a brief Persian reason).
 
 ### How it works
 

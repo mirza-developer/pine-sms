@@ -184,14 +184,14 @@ public class BotUpdateHandler(BaleBotClient botClient,
         // Strip <<PENALTY>> FIRST and BEFORE saving the session.
         // If the raw block is saved into session history the AI sees it on the next
         // turn, copies it verbatim, and it leaks to the user even after stripping.
-        var textAfterPenalty = ResponseBlockTools.StripPenaltyBlocks(response.ResponseText, out var penaltyJson);
+        var textAfterPenalty = ResponseBlockTools.StripPenaltyBlocks(response.ResponseText, out var penaltyText);
 
-        if (!string.IsNullOrEmpty(penaltyJson))
+        if (!string.IsNullOrEmpty(penaltyText))
         {
             // Clear session so the user starts fresh after the lock expires.
             sessionStore.RemoveSession(chatId);
             penaltyStore.ApplyPenalty(chatId);
-            logger.LogWarning("Penalty applied to chat {ChatId}. Reason: {Reason}", chatId, penaltyJson);
+            logger.LogWarning("Penalty applied to chat {ChatId}. Reason: {Reason}", chatId, penaltyText);
             await SendAndEnqueueBotReplyAsync(chatId, username, PenaltyAppliedMessage, ct);
             return;
         }
