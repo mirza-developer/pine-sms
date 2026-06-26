@@ -157,7 +157,7 @@ public static class ResponseBlockTools
 
     /// <summary>
     /// Strips the <c>&lt;&lt;PENALTY … &gt;&gt;</c> block from <paramref name="text"/>.
-    /// Extracted penalty JSON is returned via <paramref name="penaltyJson"/>.
+    /// Extracted penalty text is returned via <paramref name="penaltyText"/>.
     /// This method is intentionally lenient about how the AI terminates the block:
     /// <list type="bullet">
     ///   <item>Accepts the standard <c>&gt;&gt;</c> terminator.</item>
@@ -165,19 +165,19 @@ public static class ResponseBlockTools
     ///   <item>Accepts the Persian/Arabic right-pointing double angle quotation mark <c>»</c> (U+00BB).</item>
     ///   <item>Accepts the HTML-encoded form <c>&amp;gt;&amp;gt;</c>.</item>
     ///   <item>If no terminator is found, treats end-of-text as the implicit close so
-    ///         a malformed block is still stripped and its JSON is best-effort extracted.</item>
+    ///         a malformed block is still stripped and its text is best-effort extracted.</item>
     /// </list>
     /// Also handles the case where the AI wraps the block in a markdown code fence
     /// (e.g. <c>```text … ```</c>), which is stripped before searching for the block.
     /// </summary>
     /// <param name="text">Raw AI response text that may contain a PENALTY block.</param>
-    /// <param name="penaltyJson">
-    /// Output parameter to receive the trimmed penalty JSON from the block.
+    /// <param name="penaltyText">
+    /// Output parameter to receive the trimmed plain-text reason from the block.
     /// </param>
     /// <returns>The cleaned response text with the PENALTY block removed.</returns>
-    public static string StripPenaltyBlocks(string text, out string? penaltyJson)
+    public static string StripPenaltyBlocks(string text, out string? penaltyText)
     {
-        penaltyJson = null;
+        penaltyText = null;
 
         if (string.IsNullOrEmpty(text))
             return text;
@@ -224,7 +224,7 @@ public static class ResponseBlockTools
             var content = text.Substring(contentStart, contentEnd - contentStart).Trim();
 
             if (content.Length > 0)
-                penaltyJson = content;
+                penaltyText = content;
 
             text = text.Remove(blockStart, blockLength);
             startIndex = blockStart;

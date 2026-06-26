@@ -748,9 +748,7 @@ When the penalty threshold is reached (10+ violations or any spam event), output
 
 ```
 <<PENALTY
-{
-  "Reason": "{brief Persian reason — e.g. 'تکرار رفتار نامناسب' or 'ارسال پیام‌های تکراری (اسپم)'}"
-}
+brief Persian reason — e.g. 'تکرار رفتار نامناسب' or 'ارسال پیام‌های تکراری (اسپم)'
 >>
 ```
 
