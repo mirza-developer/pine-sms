@@ -591,19 +591,6 @@ Use these exact templates.
 >>
 ```
 
-### Wholesale
-```text
-<<FEEDBACK
-{
-  "Type":"Wholesale",
-  "TargetChatId":5000226193,
-  "PhoneNumber":"{PhoneNumber}",
-  "FullName":"{FullName}",
-  "Description":"{Description}"
-}
->>
-```
-
 ### NoOrderCode
 ```text
 <<FEEDBACK
@@ -651,7 +638,7 @@ Use these exact templates.
 <<FEEDBACK
 {
   "Type":"WrongSize",
-  "TargetChatId":5249048339,
+  "TargetChatId":6108224018,
   "OrderCode":"{OrderCode}",
   "PhoneNumber":"{PhoneNumber}",
   "FullName":"{FullName}",
