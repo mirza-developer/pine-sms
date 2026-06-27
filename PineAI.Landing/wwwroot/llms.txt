@@ -1,0 +1,35 @@
+# PineAI (پاین‌ای)
+
+> PineAI is an intelligent, all-in-one customer management platform built exclusively for Iranian online stores. It combines bulk SMS marketing, an AI-powered support chatbot on the Bale messenger, and a branded order-tracking page — all accessible from a single dashboard. The product UI is fully in Persian (Farsi) with RTL layout.
+
+## Product
+
+- [Homepage](https://pineai.ir/): Single-page application presenting all features, onboarding steps, key differentiators, and a free-demo request form. This is the only public-facing page.
+
+## Core Features
+
+- [Smart SMS — پیامک هوشمند](https://pineai.ir/#features): Send bulk SMS campaigns to thousands of customers at once. Import contact lists manually or via Excel. Track delivery status and analyze campaign results from the admin panel.
+- [AI Support Bot — ربات پشتیبانی هوشمند](https://pineai.ir/#features): A 24/7 automated chatbot running on Bale (Iran's leading messaging platform), powered by a large language model. It queries live order data, answers common customer questions, and escalates complex queries to a human support agent. Supports both text and image messages. This is the most popular feature.
+- [Order Tracking System — سیستم رهگیری سفارش](https://pineai.ir/#features): A white-label, store-branded tracking page for end customers. Customers look up their order status using an order code, mobile number, or email address, and receive the postal tracking code with a one-tap copy action.
+
+## Onboarding
+
+- [How It Works](https://pineai.ir/#how-it-works): Four-step onboarding — (1) needs consultation with the PineAI team, (2) system setup and branding customization (colors, content, bot instructions), (3) customer list import from Excel, (4) go live. Full deployment takes under 48 hours and requires no technical expertise from the store owner.
+
+## Why PineAI
+
+- Fully Persian (Farsi) UI and RTL layout — no extra configuration needed.
+- Native integration with Bale, the most widely used Iranian messaging app.
+- AI-driven support bot with custom per-store instructions and live database access.
+- Supports both SQL Server and SQLite backends for flexible infrastructure choices.
+- Complete white-label customization: brand colors, UI content, and bot personality per store.
+- No ongoing technical knowledge required for day-to-day operation.
+
+## Contact
+
+- [Free Demo Request](https://pineai.ir/#contact): Prospective customers submit their full name (required), phone number (required), optional store website URL, and a short description of their needs. The PineAI team contacts them to schedule a free demo.
+
+## Optional
+
+- [Sitemap](https://pineai.ir/sitemap.xml): XML sitemap listing all indexed URLs.
+- [Robots.txt](https://pineai.ir/robots.txt): Crawler rules — all content is publicly indexable.

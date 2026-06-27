@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://pineai.ir/sitemap.xml
+LLMs: https://pineai.ir/llms.txt
